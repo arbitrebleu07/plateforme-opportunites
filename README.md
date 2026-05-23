@@ -1,59 +1,184 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# OpportuniTech
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plateforme d'opportunités (offres d'emploi, stages, bourses, formations) avec gestion d'utilisateurs, catégories et notifications.
 
-## About Laravel
+## Stack technique
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Backend** : Laravel 12 (PHP)
+- **Frontend** : React 19 + Vite
+- **Base de données** : MySQL
+- **Authentification** : Laravel Sanctum
+- **Styling** : Tailwind CSS
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Prérequis
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Composer
+- Node.js 18+
+- MySQL
+- Git
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### 1. Cloner le projet
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+git clone https://github.com/TON_USERNAME/plateforme-opportunites.git
+cd plateforme-opportunites
+```
 
-## Laravel Sponsors
+### 2. Configuration backend
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+# Installer les dépendances PHP
+composer install
 
-### Premium Partners
+# Copier le fichier d'environnement
+cp .env.example .env
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# Générer la clé d'application
+php artisan key:generate
 
-## Contributing
+# Configurer la base de données dans .env
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=plateforme_opportunites
+# DB_USERNAME=root
+# DB_PASSWORD=ton_mot_de_passe
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Exécuter les migrations
+php artisan migrate
 
-## Code of Conduct
+# Exécuter les seeders (catégories par défaut)
+php artisan db:seed --class=CategorieSeeder
+php artisan db:seed --class=OffreCategorieSeeder
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 3. Configuration frontend
 
-## Security Vulnerabilities
+```bash
+cd frontend
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Installer les dépendances
+npm install
 
-## License
+# Lancer le serveur de développement
+npm run dev
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 4. Lancer le serveur Laravel
+
+```bash
+# Retourner à la racine du projet
+cd ..
+
+# Lancer le serveur Laravel
+php artisan serve
+```
+
+Le backend sera accessible sur `http://127.0.0.1:8000` et le frontend sur `http://localhost:5173`.
+
+## Structure du projet
+
+```
+plateforme-opportunites/
+├── app/                 # Code Laravel (Controllers, Models, etc.)
+├── database/            # Migrations et Seeders
+├── frontend/            # Application React
+│   ├── src/
+│   │   ├── components/  # Composants React
+│   │   ├── pages/       # Pages de l'application
+│   │   ├── hooks/       # Hooks personnalisés
+│   │   ├── services/    # Services API
+│   │   └── context/     # Contexte d'authentification
+│   └── public/          # Assets statiques
+├── public/              # Point d'entrée Laravel
+├── routes/              # Routes Laravel
+└── resources/           # Views et assets Laravel
+```
+
+## Fonctionnalités
+
+- **Authentification** : Inscription, connexion, déconnexion
+- **Gestion des offres** : CRUD complet pour les utilisateurs authentifiés
+- **Catégories** : Filtrage des offres par catégorie
+- **Types** : Emploi, stage, bourse, formation
+- **Statuts** : Active, expirée (mise à jour automatique)
+- **Notifications** : Notifications automatiques (offre expirée, actions admin)
+- **Admin** : Dashboard admin pour gérer utilisateurs et offres
+- **Profil** : Gestion du profil utilisateur (nom, email, photo)
+- **Pagination** : Pagination des offres et des annonces utilisateur
+
+## Utilisation
+
+### Comptes par défaut
+
+Après avoir exécuté les seeders, vous pouvez créer un compte via le formulaire d'inscription. Pour le rôle admin, vous devez le définir manuellement dans la base de données ou via tinker :
+
+```bash
+php artisan tinker
+>>> $user = App\Models\User::find(1);
+>>> $user->role = 'admin';
+>>> $user->save();
+```
+
+### Endpoints API
+
+- `POST /api/register` - Inscription
+- `POST /api/login` - Connexion
+- `POST /api/logout` - Déconnexion
+- `GET /api/offres` - Lister les offres (publique)
+- `GET /api/offres/{id}` - Détails d'une offre (publique)
+- `POST /api/offres` - Créer une offre (authentifié)
+- `PUT /api/offres/{id}` - Modifier une offre (authentifié)
+- `DELETE /api/offres/{id}` - Supprimer une offre (authentifié)
+- `GET /api/mes-offres` - Offres de l'utilisateur (authentifié)
+- `GET /api/categories` - Lister les catégories (publique)
+- `GET /api/notifications` - Notifications de l'utilisateur (authentifié)
+- `PUT /api/notifications/{id}/lire` - Marquer notification comme lue (authentifié)
+- `POST /api/profile` - Mettre à jour le profil (authentifié)
+- `GET /api/admin/stats` - Statistiques admin (admin)
+- `GET /api/admin/users` - Lister les utilisateurs (admin)
+- `PUT /api/admin/users/{id}/role` - Changer le rôle d'un utilisateur (admin)
+- `DELETE /api/admin/users/{id}` - Supprimer un utilisateur (admin)
+- `GET /api/admin/offres` - Lister toutes les offres (admin)
+- `PUT /api/admin/offres/{offre}/statut` - Changer le statut d'une offre (admin)
+- `DELETE /api/admin/offres/{offre}` - Supprimer une offre (admin)
+
+## Développement
+
+### Lancer les tests
+
+```bash
+# Tests Laravel
+php artisan test
+
+# Tests React
+cd frontend
+npm test
+```
+
+### Linter
+
+```bash
+# ESLint (React)
+cd frontend
+npm run lint
+```
+
+## Déploiement
+
+Pour le déploiement en production :
+
+1. Configurer les variables d'environnement dans `.env`
+2. Exécuter `php artisan key:generate`
+3. Exécuter `php artisan migrate --force`
+4. Exécuter `php artisan config:cache`
+5. Exécuter `php artisan route:cache`
+6. Builder le frontend : `cd frontend && npm run build`
+7. Configurer le serveur web (Apache/Nginx) pour pointer vers le dossier `public`
+
+## Licence
+
+Ce projet est open-source et disponible sous licence MIT.
