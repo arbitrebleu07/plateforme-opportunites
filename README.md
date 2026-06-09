@@ -1,6 +1,6 @@
 # OpportuniTech
 
-Plateforme d'opportunités (offres d'emploi, stages, bourses, formations) avec gestion d'utilisateurs, catégories et notifications.
+Plateforme d'opportunités (offres d'emploi, stages, bourses/concours, formations) avec gestion d'utilisateurs, catégories et notifications.
 
 ## Stack technique
 
@@ -103,7 +103,7 @@ plateforme-opportunites/
 - **Authentification** : Inscription, connexion, déconnexion
 - **Gestion des offres** : CRUD complet pour les utilisateurs authentifiés
 - **Catégories** : Filtrage des offres par catégorie
-- **Types** : Emploi, stage, bourse, formation
+- **Types** : Emploi, stage, bourses/concours, formation
 - **Statuts** : Active, expirée (mise à jour automatique)
 - **Notifications** : Notifications automatiques (offre expirée, actions admin)
 - **Admin** : Dashboard admin pour gérer utilisateurs et offres
