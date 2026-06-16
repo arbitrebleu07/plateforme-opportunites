@@ -77,8 +77,8 @@ Route::middleware('auth:sanctum')->group(function () {
     |------------------------------------------------------------------
     */
     Route::post('/categories', [CategorieController::class, 'store']);
-    Route::put('/categories/{id}', [CategorieController::class, 'update']);
-    Route::delete('/categories/{id}', [CategorieController::class, 'destroy']);
+    Route::put('/categories/{categorie}', [CategorieController::class, 'update']);
+    Route::delete('/categories/{categorie}', [CategorieController::class, 'destroy']);
 
     /*
     |------------------------------------------------------------------
@@ -87,7 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     |------------------------------------------------------------------
     */
     Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::put('/notifications/{id}/lire', [NotificationController::class, 'marquerLu']);
+    Route::put('/notifications/{notification}/lire', [NotificationController::class, 'marquerLu']);
 });
 /*
 |--------------------------------------------------------------------------
