@@ -1,3 +1,6 @@
+// eslint-disable-next-line no-unused-vars
+import React from 'react'
+
 export function Button({ children, variant = 'primary', size = 'md', className = '', ...props }) {
   const baseClasses = 'font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
   
