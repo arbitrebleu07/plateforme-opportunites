@@ -29,8 +29,12 @@ class NotificationController extends Controller
     | PUT /api/notifications/{notification}/lire
     |------------------------------------------------------------------
     */
-    public function marquerLu(Notification $notification)
+    public function marquerLu(Request $request, Notification $notification)
     {
+        if (!$notification->utilisateurs()->where('users.id', $request->user()->id)->exists()) {
+            return response()->json(['message' => 'Non autorisé'], 403);
+        }
+
         $notification->update(['lu' => true]);
         return response()->json(['message' => 'Notification marquée comme lue']);
     }

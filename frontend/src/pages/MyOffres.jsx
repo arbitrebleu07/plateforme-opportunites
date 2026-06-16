@@ -7,14 +7,16 @@ import { Badge } from '../components/ui/Badge'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { Pagination } from '../components/ui/Pagination'
 import { Select } from '../components/ui/Select'
+import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { offresService } from '../services/offresService'
 import { getStatutBadgeVariant } from '../utils/constants'
 
 export default function MyOffres() {
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState('')
+  const [actionError, setActionError] = useState(null)
   
-  const { data: paginatedData, loading, refetch } = useMyOffres({
+  const { data: paginatedData, loading, error: fetchError, refetch } = useMyOffres({
     page,
     per_page: 12,
     statut: statusFilter,
@@ -34,11 +36,13 @@ export default function MyOffres() {
   
   const handleDeleteOffre = async (offreId) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
+      setActionError(null)
       try {
         await offresService.delete(offreId)
         refetch()
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
+        const msg = error.response?.data?.message || 'Erreur lors de la suppression de l\'offre'
+        setActionError(msg)
       }
     }
   }
@@ -53,6 +57,10 @@ export default function MyOffres() {
           <Button>+ Nouvelle offre</Button>
         </Link>
       </div>
+      
+      {(actionError || fetchError) && (
+        <ErrorMessage message={actionError || 'Erreur de chargement des offres'} onRetry={fetchError ? refetch : undefined} />
+      )}
       
       {/* Filtres */}
       <Card className="mb-6 p-4">

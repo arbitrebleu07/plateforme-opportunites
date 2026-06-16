@@ -11,7 +11,12 @@ export function AuthProvider({ children }) {
     if (token) {
       api.get('/me')
         .then(res => setUser(res.data))
-        .catch(() => localStorage.removeItem('token'))
+        .catch((err) => {
+          if (err.response?.status !== 401) {
+            console.error('Erreur lors de la récupération du profil:', err)
+          }
+          localStorage.removeItem('token')
+        })
         .finally(() => setLoading(false))
     } else {
       setTimeout(() => setLoading(false), 0)
@@ -33,9 +38,14 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    await api.post('/logout')
-    localStorage.removeItem('token')
-    setUser(null)
+    try {
+      await api.post('/logout')
+    } catch (err) {
+      console.error('Erreur lors de la déconnexion:', err)
+    } finally {
+      localStorage.removeItem('token')
+      setUser(null)
+    }
   }
 
   const updateUser = async (formData) => {

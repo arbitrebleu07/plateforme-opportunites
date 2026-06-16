@@ -20,8 +20,8 @@ function Login() {
     try {
       await login(form.email, form.password)
       navigate('/')
-    } catch {
-      setError('Email ou mot de passe incorrect.')
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data?.errors?.email?.[0] || 'Email ou mot de passe incorrect.')
     } finally {
       setLoading(false)
     }

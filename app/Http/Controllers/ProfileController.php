@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
@@ -26,14 +27,18 @@ class ProfileController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
 
-        // Gérer l'upload de photo
         if ($request->hasFile('photo')) {
-            // Supprimer l'ancienne photo si elle existe
             if ($user->photo) {
                 Storage::disk('public')->delete($user->photo);
             }
-            
+
             $path = $request->file('photo')->store('photos', 'public');
+            if (!$path) {
+                Log::error('Échec de l\'upload de la photo pour l\'utilisateur ' . $user->id);
+                return response()->json([
+                    'message' => 'Erreur lors de l\'upload de la photo',
+                ], 500);
+            }
             $user->photo = $path;
         }
 
