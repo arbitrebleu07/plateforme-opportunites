@@ -1,55 +1,43 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 export function useApiResource(fetchFn, deps = []) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const fetchFnRef = useRef(fetchFn)
-
-  // Update ref when fetchFn changes
-  fetchFnRef.current = fetchFn
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
-    let isMounted = true
+    fetchFnRef.current = fetchFn
+  })
 
-    const fetchData = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetchFnRef.current()
-        if (isMounted) {
-          setData(response.data)
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err)
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchData()
-
-    return () => {
-      isMounted = false
-    }
-  }, deps)
-
-  const refetch = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const response = await fetchFnRef.current()
-      setData(response.data)
+      if (isMountedRef.current) {
+        setData(response.data)
+      }
     } catch (err) {
-      setError(err)
+      if (isMountedRef.current) {
+        setError(err)
+      }
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
-  }
+  }, [])
 
-  return { data, loading, error, refetch }
+  useEffect(() => {
+    isMountedRef.current = true
+    fetchData()
+    return () => {
+      isMountedRef.current = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps)
+
+  return { data, loading, error, refetch: fetchData }
 }

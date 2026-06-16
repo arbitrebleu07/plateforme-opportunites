@@ -1,24 +1,13 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { FullPageLoader } from './ui/FullPageLoader'
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <p className="text-gray-500">Chargement...</p>
-      </div>
-    )
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />
-  }
-
-  if (user.role !== 'admin') {
-    return <Navigate to="/dashboard" replace />
-  }
+  if (loading) return <FullPageLoader />
+  if (!user) return <Navigate to="/login" replace />
+  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />
 
   return children
 }

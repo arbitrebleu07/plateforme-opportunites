@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { typeColors } from '../utils/constants'
+import { formatDate } from '../utils/formatDate'
 
 export default function OffreDetail() {
   const { id } = useParams()
@@ -47,10 +48,10 @@ export default function OffreDetail() {
           {offre.localisation && (
             <span>📍 {offre.localisation}</span>
           )}
-          <span>📅 Publié le {new Date(offre.date_publication).toLocaleDateString('fr-FR')}</span>
+          <span>📅 Publié le {formatDate(offre.date_publication)}</span>
           {offre.date_limite && (
             <span className={isExpired ? 'text-red-500' : ''}>
-              ⏰ Limite: {new Date(offre.date_limite).toLocaleDateString('fr-FR')}
+              ⏰ Limite: {formatDate(offre.date_limite)}
             </span>
           )}
         </div>

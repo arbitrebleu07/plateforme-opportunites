@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Badge } from '../ui/Badge'
 import { Card } from '../ui/Card'
 import { typeColors, getStatutBadgeVariant } from '../../utils/constants'
+import { formatDate } from '../../utils/formatDate'
 
 export function OfferCard({ offre }) {
   const isExpired = offre.statut === 'expiree'
@@ -34,10 +35,10 @@ export function OfferCard({ offre }) {
       </p>
       
       <div className="flex justify-between items-center text-xs text-gray-500">
-        <span>Publié le {new Date(offre.date_publication).toLocaleDateString('fr-FR')}</span>
+        <span>Publié le {formatDate(offre.date_publication)}</span>
         {offre.date_limite && (
           <span className={isExpired ? 'text-red-500' : ''}>
-            Limite: {new Date(offre.date_limite).toLocaleDateString('fr-FR')}
+            Limite: {formatDate(offre.date_limite)}
           </span>
         )}
       </div>

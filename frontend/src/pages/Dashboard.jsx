@@ -5,9 +5,12 @@ import { useNotifications } from '../hooks/useNotifications'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { StatCard } from '../components/ui/StatCard'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { notificationsService } from '../services/notificationsService'
 import { offresService } from '../services/offresService'
+import { confirmAndDelete } from '../utils/confirmAction'
+import { formatDate } from '../utils/formatDate'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -28,16 +31,12 @@ export default function Dashboard() {
     }
   }
   
-  const handleDeleteOffre = async (offreId) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
-      try {
-        await offresService.delete(offreId)
-        refetchMyOffres()
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
-      }
-    }
-  }
+  const handleDeleteOffre = (offreId) =>
+    confirmAndDelete(
+      'Êtes-vous sûr de vouloir supprimer cette offre ?',
+      () => offresService.delete(offreId),
+      refetchMyOffres
+    )
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -51,24 +50,10 @@ export default function Dashboard() {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Total annonces</h3>
-          <div className="text-3xl font-bold text-blue-600">{total}</div>
-        </Card>
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Actives</h3>
-          <div className="text-3xl font-bold text-green-600">{activeCount}</div>
-        </Card>
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Expirées</h3>
-          <div className="text-3xl font-bold text-red-600">{expiredCount}</div>
-        </Card>
-        <Card>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">Notifications</h3>
-          <div className="text-3xl font-bold text-purple-600">
-            {notifications?.filter(n => !n.lu).length || 0}
-          </div>
-        </Card>
+        <StatCard label="Total annonces" value={total} color="blue" />
+        <StatCard label="Actives" value={activeCount} color="green" />
+        <StatCard label="Expirées" value={expiredCount} color="red" />
+        <StatCard label="Notifications" value={notifications?.filter(n => !n.lu).length || 0} color="purple" />
       </div>
       
       {/* Notifications Section */}
@@ -82,7 +67,7 @@ export default function Dashboard() {
                   <p className="font-medium text-gray-800">{notif.titre || 'Notification'}</p>
                   <p className="text-sm text-gray-600">{notif.message}</p>
                   <p className="text-xs text-gray-400 mt-1">
-                    {new Date(notif.date_notification).toLocaleDateString('fr-FR')}
+                    {formatDate(notif.date_notification)}
                   </p>
                 </div>
                 {!notif.lu && (

@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Offre;
 use App\Models\Categorie;
-use App\Models\Source;
-use App\Models\Notification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -100,15 +99,12 @@ class AdminController extends Controller
         $oldStatut = $offre->statut;
         $offre->update(['statut' => $request->statut]);
 
-        // Créer une notification pour le propriétaire de l'offre
         if ($offre->id_utilisateur && $oldStatut !== $request->statut) {
-            $notification = Notification::create([
-                'titre' => 'Statut de votre offre modifié',
-                'message' => "L'admin a changé le statut de votre offre \"{$offre->titre}\" de {$oldStatut} à {$request->statut}.",
-                'lu' => false,
-                'date_notification' => now(),
-            ]);
-            $notification->utilisateurs()->attach($offre->id_utilisateur);
+            NotificationService::notifyUser(
+                $offre->id_utilisateur,
+                'Statut de votre offre modifié',
+                "L'admin a changé le statut de votre offre \"{$offre->titre}\" de {$oldStatut} à {$request->statut}."
+            );
         }
 
         return response()->json([
@@ -129,15 +125,12 @@ class AdminController extends Controller
         $offreUserId = $offre->id_utilisateur;
         $offre->delete();
 
-        // Créer une notification pour le propriétaire de l'offre
         if ($offreUserId) {
-            $notification = Notification::create([
-                'titre' => 'Offre supprimée',
-                'message' => "L'admin a supprimé votre offre \"{$offreTitre}\".",
-                'lu' => false,
-                'date_notification' => now(),
-            ]);
-            $notification->utilisateurs()->attach($offreUserId);
+            NotificationService::notifyUser(
+                $offreUserId,
+                'Offre supprimée',
+                "L'admin a supprimé votre offre \"{$offreTitre}\"."
+            );
         }
 
         return response()->json(['message' => 'Offre supprimée avec succès']);
