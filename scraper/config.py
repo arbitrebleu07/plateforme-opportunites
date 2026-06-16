@@ -3,19 +3,21 @@ Configuration du scraper
 Ce fichier contient toutes les configurations nécessaires pour les scrapers
 """
 
+import os
+
 # Configuration de la base de données Laravel
 DB_CONFIG = {
-    'host': '127.0.0.1',
-    'port': 3306,
-    'database': 'plateforme_opportunites',
-    'user': 'root',
-    'password': '',  # Mettre votre mot de passe MySQL si nécessaire
+    'host': os.environ.get('DB_HOST', '127.0.0.1'),
+    'port': int(os.environ.get('DB_PORT', 3306)),
+    'database': os.environ.get('DB_DATABASE', 'plateforme_opportunites'),
+    'user': os.environ.get('DB_USERNAME', 'root'),
+    'password': os.environ.get('DB_PASSWORD', ''),
 }
 
 # Configuration de l'API Laravel
 LARAVEL_API = {
-    'base_url': 'http://127.0.0.1:8000/api',
-    'token': None,  # Sera généré automatiquement ou configuré manuellement
+    'base_url': os.environ.get('LARAVEL_API_URL', 'http://127.0.0.1:8000/api'),
+    'token': os.environ.get('LARAVEL_API_TOKEN'),
 }
 
 # Configuration des sources

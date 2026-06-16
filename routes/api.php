@@ -64,24 +64,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |------------------------------------------------------------------
-    | Gestion des sources de scraping
-    | CRUD complet via apiResource
-    |------------------------------------------------------------------
-    */
-    Route::apiResource('sources', SourceController::class);
-
-    /*
-    |------------------------------------------------------------------
-    | Gestion des catégories
-    | Création, modification et suppression
-    |------------------------------------------------------------------
-    */
-    Route::post('/categories', [CategorieController::class, 'store']);
-    Route::put('/categories/{id}', [CategorieController::class, 'update']);
-    Route::delete('/categories/{id}', [CategorieController::class, 'destroy']);
-
-    /*
-    |------------------------------------------------------------------
     | Gestion des notifications
     | Lister les notifications et marquer comme lues
     |------------------------------------------------------------------
@@ -89,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::put('/notifications/{id}/lire', [NotificationController::class, 'marquerLu']);
 });
+
 /*
 |--------------------------------------------------------------------------
 | Routes Admin — accessibles uniquement aux utilisateurs avec role=admin
@@ -108,4 +91,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     // Statistiques
     Route::get('/admin/stats', [AdminController::class, 'stats']);
+
+    // Gestion des sources de scraping (admin uniquement)
+    Route::apiResource('sources', SourceController::class);
+
+    // Gestion des catégories (admin uniquement)
+    Route::post('/categories', [CategorieController::class, 'store']);
+    Route::put('/categories/{id}', [CategorieController::class, 'update']);
+    Route::delete('/categories/{id}', [CategorieController::class, 'destroy']);
 });
