@@ -9,16 +9,6 @@ import json
 import logging
 from datetime import datetime
 import requests
- 
-# Ensure console streams use UTF-8 to avoid UnicodeEncodeError on Windows consoles
-try:
-    if hasattr(sys, 'stdout') and hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if hasattr(sys, 'stderr') and hasattr(sys.stderr, 'reconfigure'):
-        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
-except Exception:
-    # Best-effort only; do not fail if reconfigure is unavailable
-    pass
 
 # Ajouter le répertoire parent au path pour les imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -56,24 +46,11 @@ class ScraperOrchestrator:
             level=getattr(logging, LOG_CONFIG['level']),
             format=LOG_CONFIG['format'],
             handlers=[
-                logging.FileHandler(LOG_CONFIG['file'], encoding='utf-8'),
-                logging.StreamHandler(stream=sys.stdout)
+                logging.FileHandler(LOG_CONFIG['file']),
+                logging.StreamHandler()
             ]
         )
-        logger = logging.getLogger('ScraperOrchestrator')
-        # Force UTF-8 encoding for all handlers
-        for handler in logger.handlers:
-            handler.setFormatter(logging.Formatter(LOG_CONFIG['format']))
-            if hasattr(handler, 'stream'):
-                # For StreamHandler, wrap stdout to handle UTF-8
-                if handler.stream == sys.stderr or handler.stream == sys.stdout:
-                    import io
-                    if sys.platform.startswith('win'):
-                        # On Windows, use UTF-8 for console output
-                        import codecs
-                        if hasattr(sys.stdout, 'buffer'):
-                            handler.setStream(io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace'))
-        return logger
+        return logging.getLogger('ScraperOrchestrator')
     
     def _get_api_token(self):
         """
@@ -172,12 +149,12 @@ class ScraperOrchestrator:
         unique_opportunities = []
         
         for opportunity in opportunities:
-            link = opportunity.get('lien') or opportunity.get('url_source', '')
+            link = opportunity.get('lien', '')
             if link and link not in seen_links:
                 seen_links.add(link)
                 unique_opportunities.append(opportunity)
-            else:
-                # Si pas de lien ou doublon sur lien, on utilise le titre comme fallback
+            elif not link:
+                # Si pas de lien, on utilise le titre comme fallback
                 title = opportunity.get('titre', '')
                 if title and title not in seen_links:
                     seen_links.add(title)
@@ -259,7 +236,6 @@ class ScraperOrchestrator:
                     'localisation': opportunity['localisation'],
                     'date_limite': opportunity['date_limite'],
                     'date_publication': opportunity['date_publication'],
-                    'url_source': opportunity.get('url_source') or opportunity.get('lien'),
                 }
                 
                 response = requests.post(api_url, json=simplified_data, headers=headers, timeout=30)

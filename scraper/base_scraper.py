@@ -5,24 +5,17 @@ Cette classe fournit les méthodes communes à tous les scrapers
 
 import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 import logging
 from datetime import datetime
 import random
-
-# Selenium est optionnel - certains scrapers n'en ont pas besoin
-try:
-    from selenium import webdriver
-    from selenium.webdriver.chrome.service import Service
-    from selenium.webdriver.chrome.options import Options
-    from selenium.webdriver.common.by import By
-    from selenium.webdriver.support.ui import WebDriverWait
-    from selenium.webdriver.support import expected_conditions as EC
-    from webdriver_manager.chrome import ChromeDriverManager
-    SELENIUM_AVAILABLE = True
-except (ImportError, Exception) as e:
-    SELENIUM_AVAILABLE = False
-    webdriver = None
 
 class BaseScraper:
     """
@@ -96,10 +89,6 @@ class BaseScraper:
         Returns:
             BeautifulSoup object ou None en cas d'erreur
         """
-        if not SELENIUM_AVAILABLE:
-            self.logger.warning("Selenium n'est pas disponible. Fallback sur requests.")
-            return self.get_page(url, delay)
-        
         if not self.driver:
             self._init_selenium()
         
@@ -128,9 +117,6 @@ class BaseScraper:
         """
         Initialise le driver Selenium Chrome
         """
-        if not SELENIUM_AVAILABLE:
-            raise RuntimeError("Selenium n'est pas disponible")
-        
         chrome_options = Options()
         
         if self.config['SELENIUM_CONFIG']['headless']:

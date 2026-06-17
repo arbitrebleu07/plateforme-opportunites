@@ -77,11 +77,11 @@ class AdminController extends Controller
     | GET /api/admin/offres
     |------------------------------------------------------------------
     */
-    public function offres(Request $request)
+    public function offres()
     {
         $offres = Offre::with(['categories', 'sources'])
                        ->orderBy('created_at', 'desc')
-                       ->paginate($request->per_page ?? 12);
+                       ->get();
         return response()->json($offres);
     }
 
