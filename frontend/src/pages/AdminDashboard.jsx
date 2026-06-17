@@ -6,15 +6,13 @@ import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
-import { Pagination } from '../components/ui/Pagination'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('stats')
-  const [offresPage, setOffresPage] = useState(1)
   
   const { data: stats, loading: statsLoading, error: statsError } = useAdminStats()
   const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useAdminUsers()
-  const { data: adminOffres, loading: offresLoading, error: offresError, refetch: refetchOffres } = useAdminOffres({ page: offresPage, per_page: 10 })
+  const { data: adminOffres, loading: offresLoading, error: offresError, refetch: refetchOffres } = useAdminOffres()
   
   const handleUpdateUserRole = async (userId, newRole) => {
     try {
@@ -60,11 +58,6 @@ export default function AdminDashboard() {
         console.error('Erreur lors de la suppression:', error)
       }
     }
-  }
-
-  const handlePageChange = (newPage) => {
-    setOffresPage(newPage)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   
   return (
@@ -198,7 +191,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {adminOffres?.data?.map((o) => (
+                    {adminOffres?.map((o) => (
                       <tr key={o.id_offre}>
                         <td className="px-6 py-4 whitespace-nowrap">{o.titre}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -233,8 +226,6 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
-
-              <Pagination data={adminOffres} onPageChange={handlePageChange} />
             </div>
           )}
         </div>
