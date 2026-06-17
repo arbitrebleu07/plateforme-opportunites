@@ -9,53 +9,61 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('stats')
+  const [actionError, setActionError] = useState(null)
   
   const { data: stats, loading: statsLoading, error: statsError } = useAdminStats()
   const { data: users, loading: usersLoading, error: usersError, refetch: refetchUsers } = useAdminUsers()
   const { data: adminOffres, loading: offresLoading, error: offresError, refetch: refetchOffres } = useAdminOffres()
   
   const handleUpdateUserRole = async (userId, newRole) => {
+    setActionError(null)
     try {
       await adminService.updateUserRole(userId, newRole)
       refetchUsers()
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du rôle:', error)
+      const msg = error.response?.data?.message || 'Erreur lors de la mise à jour du rôle'
+      setActionError(msg)
     }
   }
   
   const handleDeleteUser = async (userId) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
+      setActionError(null)
       try {
         await adminService.deleteUser(userId)
         refetchUsers()
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
+        const msg = error.response?.data?.message || 'Erreur lors de la suppression de l\'utilisateur'
+        setActionError(msg)
       }
     }
   }
   
   const handleUpdateOffreStatus = async (offreId, currentStatus, newStatus) => {
-    // Empêcher de réactiver une offre expirée
     if (currentStatus === 'expiree' && newStatus === 'active') {
-      alert('Cette offre a été expirée et ne peut plus être réactivée.')
+      setActionError('Cette offre a été expirée et ne peut plus être réactivée.')
       return
     }
 
+    setActionError(null)
     try {
       await adminService.updateOffreStatus(offreId, newStatus)
       refetchOffres()
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error)
+      const msg = error.response?.data?.message || 'Erreur lors de la mise à jour du statut'
+      setActionError(msg)
     }
   }
   
   const handleDeleteOffre = async (offreId) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
+      setActionError(null)
       try {
         await adminService.deleteOffre(offreId)
         refetchOffres()
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
+        const msg = error.response?.data?.message || 'Erreur lors de la suppression de l\'offre'
+        setActionError(msg)
       }
     }
   }
@@ -65,6 +73,8 @@ export default function AdminDashboard() {
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         Dashboard Admin
       </h1>
+      
+      {actionError && <ErrorMessage message={actionError} />}
       
       {/* Tabs */}
       <div className="flex gap-4 mb-6 border-b">

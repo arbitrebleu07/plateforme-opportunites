@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { useMyOffres } from '../hooks/useOffres'
@@ -6,13 +7,15 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
+import { ErrorMessage } from '../components/ui/ErrorMessage'
 import { notificationsService } from '../services/notificationsService'
 import { offresService } from '../services/offresService'
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { data: myOffresData, loading, refetch: refetchMyOffres } = useMyOffres()
-  const { data: notifications, refetch: refetchNotifications } = useNotifications()
+  const { data: myOffresData, loading, error: offresError, refetch: refetchMyOffres } = useMyOffres()
+  const { data: notifications, error: notifError, refetch: refetchNotifications } = useNotifications()
+  const [actionError, setActionError] = useState(null)
   
   const myOffres = myOffresData?.data || []
   const total = myOffresData?.total || 0
@@ -20,21 +23,25 @@ export default function Dashboard() {
   const expiredCount = myOffres.filter(o => o.statut === 'expiree').length
   
   const handleMarkAsRead = async (notificationId) => {
+    setActionError(null)
     try {
       await notificationsService.markAsRead(notificationId)
       refetchNotifications()
     } catch (error) {
-      console.error('Erreur lors du marquage comme lu:', error)
+      const msg = error.response?.data?.message || 'Erreur lors du marquage comme lu'
+      setActionError(msg)
     }
   }
   
   const handleDeleteOffre = async (offreId) => {
     if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
+      setActionError(null)
       try {
         await offresService.delete(offreId)
         refetchMyOffres()
       } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
+        const msg = error.response?.data?.message || 'Erreur lors de la suppression de l\'offre'
+        setActionError(msg)
       }
     }
   }
@@ -49,6 +56,10 @@ export default function Dashboard() {
           <Button>+ Nouvelle offre</Button>
         </Link>
       </div>
+      
+      {(actionError || offresError || notifError) && (
+        <ErrorMessage message={actionError || 'Erreur de chargement des données'} />
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>

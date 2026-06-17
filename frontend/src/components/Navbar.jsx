@@ -10,7 +10,11 @@ function Navbar() {
   const profileMenuRef = useRef(null)
 
   const handleLogout = async () => {
-    await logout()
+    try {
+      await logout()
+    } catch (err) {
+      console.error('Erreur lors de la déconnexion:', err)
+    }
     navigate('/login')
   }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Offre;
 use App\Models\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class OffreController extends Controller
 {
@@ -17,23 +18,26 @@ class OffreController extends Controller
     public function index(Request $request)
     {
         // Mettre à jour automatiquement les offres expirées et créer des notifications
-        $expiredOffres = Offre::where('statut', 'active')
-                              ->where('date_limite', '<', now())
-                              ->get();
+        try {
+            $expiredOffres = Offre::where('statut', 'active')
+                                  ->where('date_limite', '<', now())
+                                  ->get();
 
-        foreach ($expiredOffres as $offre) {
-            $offre->update(['statut' => 'expiree']);
+            foreach ($expiredOffres as $offre) {
+                $offre->update(['statut' => 'expiree']);
 
-            // Créer une notification pour le propriétaire de l'offre
-            if ($offre->id_utilisateur) {
-                $notification = Notification::create([
-                    'titre' => 'Offre expirée',
-                    'message' => "Votre offre \"{$offre->titre}\" a expiré.",
-                    'lu' => false,
-                    'date_notification' => now(),
-                ]);
-                $notification->utilisateurs()->attach($offre->id_utilisateur);
+                if ($offre->id_utilisateur) {
+                    $notification = Notification::create([
+                        'titre' => 'Offre expirée',
+                        'message' => "Votre offre \"{$offre->titre}\" a expiré.",
+                        'lu' => false,
+                        'date_notification' => now(),
+                    ]);
+                    $notification->utilisateurs()->attach($offre->id_utilisateur);
+                }
             }
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la mise à jour des offres expirées: ' . $e->getMessage());
         }
 
         $query = Offre::with(['categories', 'sources'])

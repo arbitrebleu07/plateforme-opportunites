@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { flushSync } from 'react-dom'
 
 export function useApiResource(fetchFn, deps = []) {
   const [data, setData] = useState(null)
@@ -6,50 +7,30 @@ export function useApiResource(fetchFn, deps = []) {
   const [error, setError] = useState(null)
   const fetchFnRef = useRef(fetchFn)
 
-  // Update ref when fetchFn changes
-  fetchFnRef.current = fetchFn
-
   useEffect(() => {
-    let isMounted = true
+    fetchFnRef.current = fetchFn
+  })
 
-    const fetchData = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetchFnRef.current()
-        if (isMounted) {
-          setData(response.data)
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err)
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
+  const depsKey = JSON.stringify(deps)
 
-    fetchData()
-
-    return () => {
-      isMounted = false
-    }
-  }, deps)
-
-  const refetch = async () => {
+  const execute = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetchFnRef.current()
-      setData(response.data)
+      const result = await fetchFnRef.current()
+      flushSync(() => {
+        setData(result.data)
+      })
     } catch (err) {
       setError(err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  return { data, loading, error, refetch }
+  useEffect(() => {
+    execute()
+  }, [execute, depsKey])
+
+  return { data, loading, error, refetch: execute }
 }

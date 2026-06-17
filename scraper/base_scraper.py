@@ -176,10 +176,7 @@ class BaseScraper:
         # Cette méthode doit être adaptée selon le format de date du site
         # C'est un exemple basique
         try:
-            # Adapter selon le format de date du site
             from datetime import datetime
-            # Exemple: "15 June 2024" -> "2024-06-15"
-            # À personnaliser selon les besoins
             return datetime.now().strftime('%Y-%m-%d')
-        except:
+        except (ValueError, TypeError):
             return None
