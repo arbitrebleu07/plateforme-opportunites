@@ -180,48 +180,52 @@ export default function AdminDashboard() {
             <LoadingSpinner size="lg" />
           ) : (
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {adminOffres?.map((o) => (
-                    <tr key={o.id_offre}>
-                      <td className="px-6 py-4 whitespace-nowrap">{o.titre}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="primary">{o.type}</Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={o.statut === 'active' ? 'success' : 'danger'}>
-                          {o.statut}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <select
-                          value={o.statut}
-                          onChange={(e) => handleUpdateOffreStatus(o.id_offre, o.statut, e.target.value)}
-                          className="text-sm border rounded px-2 py-1 mr-2"
-                        >
-                          <option value="active">Active</option>
-                          <option value="expiree">Expirée</option>
-                        </select>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() => handleDeleteOffre(o.id_offre)}
-                        >
-                          Supprimer
-                        </Button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Titre</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {adminOffres?.map((o) => (
+                      <tr key={o.id_offre}>
+                        <td className="px-6 py-4 whitespace-nowrap">{o.titre}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant="primary">{o.type}</Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={o.statut === 'active' ? 'success' : 'danger'}>
+                            {o.statut}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-nowrap gap-2 overflow-x-auto">
+                            <select
+                              value={o.statut}
+                              onChange={(e) => handleUpdateOffreStatus(o.id_offre, o.statut, e.target.value)}
+                              className="text-sm border rounded px-2 py-1"
+                            >
+                              <option value="active">Active</option>
+                              <option value="expiree">Expirée</option>
+                            </select>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDeleteOffre(o.id_offre)}
+                            >
+                              Supprimer
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
