@@ -22,14 +22,13 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role'     => 'nullable|in:visiteur,membre,admin',
         ]);
 
         $user = User::create([
             'name'          => $request->name,
             'email'         => $request->email,
             'password'      => Hash::make($request->password),
-            'role'          => $request->role ?? 'membre',
+            'role'          => 'membre',
             'date_creation' => now(),
         ]);
 

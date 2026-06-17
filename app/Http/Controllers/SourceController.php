@@ -44,7 +44,7 @@ class SourceController extends Controller
             'statut'   => 'nullable|in:actif,inactif',
         ]);
 
-        $source = Source::create($request->all());
+        $source = Source::create($request->only(['nom_site', 'url', 'statut']));
 
         return response()->json($source, 201);
     }
@@ -63,7 +63,7 @@ class SourceController extends Controller
             'statut'   => 'nullable|in:actif,inactif',
         ]);
 
-        $source->update($request->all());
+        $source->update($request->only(['nom_site', 'url', 'statut']));
 
         return response()->json($source);
     }

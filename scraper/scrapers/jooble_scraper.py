@@ -6,6 +6,7 @@ Utilise l'API REST de Jooble pour récupérer les offres d'emploi
 Limite API : 500 requêtes par heure
 """
 
+import os
 from base_scraper import BaseScraper
 import requests
 import logging
@@ -20,7 +21,7 @@ class JoobleScraper(BaseScraper):
     
     def __init__(self, config):
         super().__init__(config)
-        self.api_key = "8093524a-2e7e-458c-bb14-7f39524b0e98"  # Clé API Jooble
+        self.api_key = os.environ.get('JOOBLE_API_KEY', '')
         self.api_url = f"https://jooble.org/api/{self.api_key}"
         self.source_name = config['SOURCES']['jooble']['name']
         self.offer_type = config['SOURCES']['jooble']['type']

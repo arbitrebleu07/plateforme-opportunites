@@ -61,7 +61,8 @@ class OffreController extends Controller
             });
         }
         
-        $offres = $query->paginate($request->per_page ?? 12);
+        $perPage = min((int) ($request->per_page ?? 12), 100);
+        $offres = $query->paginate($perPage);
 
         return response()->json($offres);
     }
@@ -209,7 +210,8 @@ class OffreController extends Controller
             $query->where('statut', $request->statut);
         }
         
-        $offres = $query->paginate($request->per_page ?? 12);
+        $perPage = min((int) ($request->per_page ?? 12), 100);
+        $offres = $query->paginate($perPage);
 
         return response()->json($offres);
     }
