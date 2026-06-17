@@ -1,7 +1,7 @@
 export const typeColors = {
   emploi: 'primary',
   stage: 'success',
-  bourse: 'warning',
+  'bourses/concours': 'warning',
   formation: 'danger',
 }
 

@@ -85,6 +85,69 @@ class OffreController extends Controller
 
     /*
     |------------------------------------------------------------------
+    | Créer une nouvelle offre via le scraper (sans authentification)
+    | POST /api/scraper/offres
+    |------------------------------------------------------------------
+    */
+    public function scraperStore(Request $request)
+    {
+        $request->validate([
+            'titre'       => 'required|string|max:255',
+            'description' => 'required|string',
+            'type'        => 'required|in:emploi,stage,bourses/concours,formation',
+            'entreprise'  => 'nullable|string',
+            'localisation'=> 'nullable|string',
+            'date_limite' => 'nullable|date',
+            'date_publication' => 'nullable|date',
+            'source'      => 'nullable|string',
+            'url_source'  => 'nullable|string',
+            'categories'  => 'nullable|array',
+            'categories.*' => 'string',
+        ]);
+
+        // Vérifier si l'offre existe déjà (basé sur le titre)
+        $existingOffre = Offre::where('titre', $request->titre)->first();
+
+        if ($existingOffre) {
+            // L'offre existe déjà, on la retourne sans la recréer
+            return response()->json([
+                'message' => 'Offre déjà existante',
+                'offre' => $existingOffre->load('categories', 'sources')
+            ], 200);
+        }
+
+        // Créer l'offre sans utilisateur (scraper)
+        $offre = Offre::create([
+            'titre'            => $request->titre,
+            'description'      => $request->description,
+            'type'             => $request->type,
+            'entreprise'       => $request->entreprise,
+            'localisation'     => $request->localisation,
+            'date_limite'      => $request->date_limite,
+            'date_publication' => $request->date_publication ?? now(),
+            'statut'           => 'active',
+            'id_utilisateur'   => null, // Pas d'utilisateur pour le scraper
+        ]);
+
+        // Attacher les catégories si fournies (par nom, pas par ID)
+        if ($request->has('categories') && is_array($request->categories)) {
+            foreach ($request->categories as $categoryName) {
+                $category = Categorie::firstOrCreate(['nom' => $categoryName]);
+                $offre->categories()->attach($category->id_categorie);
+            }
+        }
+
+        // Créer ou lier la source si fournie
+        if ($request->source) {
+            $source = Source::firstOrCreate(['nom' => $request->source]);
+            $offre->sources()->attach($source->id_source);
+        }
+
+        return response()->json($offre->load('categories', 'sources'), 201);
+    }
+
+    /*
+    |------------------------------------------------------------------
     | Créer une nouvelle offre
     | POST /api/offres
     |------------------------------------------------------------------
@@ -94,7 +157,7 @@ class OffreController extends Controller
         $request->validate([
             'titre'       => 'required|string|max:255',
             'description' => 'required|string',
-            'type'        => 'required|in:emploi,stage,bourse,formation',
+            'type'        => 'required|in:emploi,stage,bourses/concours,formation',
             'entreprise'  => 'nullable|string',
             'localisation'=> 'nullable|string',
             'date_limite' => 'nullable|date',
@@ -144,7 +207,7 @@ class OffreController extends Controller
         $request->validate([
             'titre'       => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'type'        => 'nullable|in:emploi,stage,bourse,formation',
+            'type'        => 'nullable|in:emploi,stage,bourses/concours,formation',
             'entreprise'  => 'nullable|string',
             'localisation'=> 'nullable|string',
             'date_limite' => 'nullable|date',
@@ -184,6 +247,46 @@ class OffreController extends Controller
         $offre->delete();
 
         return response()->json(['message' => 'Offre supprimée avec succès']);
+    }
+
+    /*
+    |------------------------------------------------------------------
+    | Nettoyer les doublons dans la base de données
+    | POST /api/offres/clean-duplicates
+    |------------------------------------------------------------------
+    */
+    public function cleanDuplicates()
+    {
+        // Trouver les doublons basés sur le titre
+        $duplicates = \DB::table('offres')
+            ->select('titre', \DB::raw('COUNT(*) as count'))
+            ->groupBy('titre')
+            ->having('count', '>', 1)
+            ->get();
+
+        $deletedCount = 0;
+
+        foreach ($duplicates as $duplicate) {
+            // Garder la première occurrence et supprimer les autres
+            $firstOffre = Offre::where('titre', $duplicate->titre)
+                ->orderBy('id_offre', 'asc')
+                ->first();
+
+            $othersToDelete = Offre::where('titre', $duplicate->titre)
+                ->where('id_offre', '!=', $firstOffre->id_offre)
+                ->get();
+
+            foreach ($othersToDelete as $offre) {
+                $offre->delete();
+                $deletedCount++;
+            }
+        }
+
+        return response()->json([
+            'message' => 'Nettoyage terminé',
+            'duplicates_found' => $duplicates->count(),
+            'deleted_count' => $deletedCount
+        ]);
     }
 
     /*

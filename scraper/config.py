@@ -21,8 +21,8 @@ LARAVEL_API = {
 # Configuration des sources
 SOURCES = {
     'opportunity_desk': {
-        'name': 'Opportunity Desk',
-        'url': 'https://www.opportunitydesk.org',
+        'name': 'MINESUP - Bourses',
+        'url': 'https://www.minesup.gov.cm/index.php/category/bourses/',
         'type': 'bourses/concours',
         'enabled': True,
         'delay': 2,  # Délai en secondes entre les requêtes

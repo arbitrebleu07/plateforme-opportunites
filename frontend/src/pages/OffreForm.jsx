@@ -99,7 +99,7 @@ export default function OffreForm({ isEdit = false, initialData = null }) {
             >
               <option value="emploi">Emploi</option>
               <option value="stage">Stage</option>
-              <option value="bourse">Bourse</option>
+              <option value="bourses/concours">Bourses/Concours</option>
               <option value="formation">Formation</option>
             </Select>
           </div>

@@ -39,9 +39,34 @@ class ProfileController extends Controller
 
         $user->save();
 
+        // Construire l'URL complète de la photo
+        $user->photo = $user->photo ? url(Storage::url($user->photo)) : null;
+
         return response()->json([
             'message' => 'Profil mis à jour avec succès',
             'user' => $user,
+        ]);
+    }
+
+    /*
+    |------------------------------------------------------------------
+    | Supprimer la photo de profil de l'utilisateur connecté
+    | DELETE /api/profile/photo
+    |------------------------------------------------------------------
+    */
+    public function deletePhoto(Request $request)
+    {
+        $user = $request->user();
+
+        // Supprimer la photo si elle existe
+        if ($user->photo) {
+            Storage::disk('public')->delete($user->photo);
+            $user->photo = null;
+            $user->save();
+        }
+
+        return response()->json([
+            'message' => 'Photo de profil supprimée avec succès',
         ]);
     }
 }

@@ -39,17 +39,27 @@ export function AuthProvider({ children }) {
   }
 
   const updateUser = async (formData) => {
-    const res = await api.post('/profile', formData, {
+    await api.post('/profile', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     })
-    setUser(res.data.user)
+    // Re-fetch user data from /me to ensure we have the latest data with correct photo URL
+    const res = await api.get('/me')
+    setUser(res.data)
+    return res.data
+  }
+
+  const deletePhoto = async () => {
+    await api.delete('/profile/photo')
+    // Re-fetch user data from /me
+    const res = await api.get('/me')
+    setUser(res.data)
     return res.data
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, deletePhoto }}>
       {children}
     </AuthContext.Provider>
   )

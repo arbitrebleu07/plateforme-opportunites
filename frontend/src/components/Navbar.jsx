@@ -9,6 +9,13 @@ function Navbar() {
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef(null)
 
+  // Add cache busting to photo URL
+  const getPhotoUrl = (photo) => {
+    if (!photo) return null
+    // Temporarily disable cache busting to debug
+    return photo
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/login')
@@ -26,29 +33,29 @@ function Navbar() {
   }, [])
 
   return (
-    <nav className="bg-white shadow-md px-6 py-4">
+    <nav className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg px-6 py-4 sticky top-0 z-50">
       <div className="flex justify-between items-center">
         {/* Logo */}
-        <Link to="/" className="text-xl font-bold text-blue-600">
+        <Link to="/" className="text-2xl font-bold text-white hover:text-indigo-200 transition-colors duration-200">
           OpportuniTech
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6">
-          <Link to="/offres" className="text-gray-600 hover:text-blue-600">
+        <div className="hidden md:flex items-center gap-8">
+          <Link to="/offres" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
             Offres
           </Link>
 
           {user ? (
             <>
-              <Link to="/mes-annonces" className="text-gray-600 hover:text-blue-600">
+              <Link to="/mes-annonces" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
                 Mes annonces
               </Link>
-              <Link to="/dashboard" className="text-gray-600 hover:text-blue-600">
+              <Link to="/dashboard" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
                 Dashboard
               </Link>
               {user.role === 'admin' && (
-                <Link to="/admin" className="text-gray-600 hover:text-blue-600">
+                <Link to="/admin" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
                   Admin
                 </Link>
               )}
@@ -57,10 +64,12 @@ function Navbar() {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  className="flex items-center gap-2 text-gray-600 hover:text-blue-600 focus:outline-none"
+                  className="flex items-center gap-2 text-white hover:text-indigo-200 focus:outline-none transition-colors duration-200"
                 >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                    {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-semibold border-2 border-white/30 hover:bg-white/30 transition-all duration-200 overflow-hidden">
+                    {user.photo ? (
+                      <img src={getPhotoUrl(user.photo)} alt="Profile" className="w-full h-full object-cover" />
+                    ) : user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                   </div>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -68,21 +77,21 @@ function Navbar() {
                 </button>
 
                 {profileMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-200">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-fade-in">
+                    <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
                       <p className="font-semibold text-gray-800">{user.name}</p>
                       <p className="text-sm text-gray-500">{user.email}</p>
                     </div>
                     <Link
                       to="/profile"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
                       onClick={() => setProfileMenuOpen(false)}
                     >
                       Mon profil
                     </Link>
                     <button
                       onClick={() => { handleLogout(); setProfileMenuOpen(false); }}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                      className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors duration-200"
                     >
                       Déconnexion
                     </button>
@@ -94,13 +103,13 @@ function Navbar() {
             <>
               <Link
                 to="/login"
-                className="text-gray-600 hover:text-blue-600"
+                className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium"
               >
                 Connexion
               </Link>
               <Link
                 to="/register"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                className="bg-white text-indigo-600 px-6 py-2 rounded-full hover:bg-indigo-50 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
               >
                 Inscription
               </Link>
@@ -110,7 +119,7 @@ function Navbar() {
 
         {/* Mobile Menu Button */}
         <button
-          className="md:hidden text-gray-600"
+          className="md:hidden text-white"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,31 +134,31 @@ function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-4 pb-4 border-t pt-4">
+        <div className="md:hidden mt-4 pb-4 border-t border-white/20 pt-4 animate-fade-in">
           <div className="flex flex-col gap-4">
-            <Link to="/offres" className="text-gray-600 hover:text-blue-600" onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/offres" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
               Offres
             </Link>
 
             {user ? (
               <>
-                <Link to="/mes-annonces" className="text-gray-600 hover:text-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/mes-annonces" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
                   Mes annonces
                 </Link>
-                <Link to="/dashboard" className="text-gray-600 hover:text-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/dashboard" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
                   Dashboard
                 </Link>
                 {user.role === 'admin' && (
-                  <Link to="/admin" className="text-gray-600 hover:text-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                  <Link to="/admin" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
                     Admin
                   </Link>
                 )}
-                <Link to="/profile" className="text-gray-600 hover:text-blue-600" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/profile" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
                   Mon profil
                 </Link>
                 <button
                   onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                  className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 w-full"
+                  className="bg-white/20 text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all duration-200 w-full font-medium"
                 >
                   Déconnexion
                 </button>
@@ -158,14 +167,14 @@ function Navbar() {
               <>
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-blue-600"
+                  className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Connexion
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-center"
+                  className="bg-white text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-50 transition-all duration-200 text-center font-semibold"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Inscription

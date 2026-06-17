@@ -21,6 +21,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/profile', [ProfileController::class, 'update']);
+    Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto']);
 });
 
 /*
@@ -35,6 +36,12 @@ Route::get('/offres', [OffreController::class, 'index']);
 
 // Voir le détail d'une offre
 Route::get('/offres/{id}', [OffreController::class, 'show']);
+
+// Endpoint pour le scraper (création d'offres sans authentification)
+Route::post('/scraper/offres', [OffreController::class, 'scraperStore']);
+
+// Endpoint pour nettoyer les doublons (sans authentification pour faciliter l'utilisation)
+Route::post('/offres/clean-duplicates', [OffreController::class, 'cleanDuplicates']);
 
 // Lister toutes les catégories
 Route::get('/categories', [CategorieController::class, 'index']);

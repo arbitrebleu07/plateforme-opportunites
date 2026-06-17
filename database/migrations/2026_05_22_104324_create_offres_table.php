@@ -15,7 +15,7 @@ return new class extends Migration
         $table->id('id_offre');
         $table->string('titre');
         $table->text('description');
-        $table->enum('type', ['emploi', 'stage', 'bourse', 'formation']);
+        $table->enum('type', ['emploi', 'stage', 'bourses/concours', 'formation']);
         $table->string('entreprise')->nullable();
         $table->string('localisation')->nullable();
         $table->date('date_limite')->nullable();
