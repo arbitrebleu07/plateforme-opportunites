@@ -42,11 +42,24 @@ SOURCES = {
         'delay': 3,
     },
     'coursera': {
-        'name': 'Coursera',
-        'url': 'https://www.coursera.org',
+        'name': 'TrainingInformation - Formations',
+        'url': 'https://traininginformation.cm/home/eftp',
         'type': 'formation',
-        'enabled': True,  # Activé: Utilise l'API publique Coursera
+        'enabled': True,
         'delay': 2,
+        # Catégories à parcourir (utilisées via le paramètre `specialite`)
+        'categories': [
+            'Informatique',
+            'Marketing',
+            'Finance',
+            'Ressources Humaines',
+            'Vente',
+            'Ingénierie',
+            'Design',
+            'Communication',
+            'Juridique',
+            'Santé'
+        ]
     },
     'emplois_cm': {
         'name': 'Emploi.cm',
