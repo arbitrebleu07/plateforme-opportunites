@@ -13,8 +13,5 @@ selenium==4.15.2
 # WebDriver Manager - Pour gérer automatiquement les drivers Chrome/Firefox
 webdriver-manager==4.0.0
 
-# Pandas - Pour manipuler les données (optionnel, pour export CSV)
-pandas==2.1.1
-
 # Python-dotenv - Pour les variables d'environnement
 python-dotenv==1.0.0
