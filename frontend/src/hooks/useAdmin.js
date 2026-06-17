@@ -9,6 +9,6 @@ export function useAdminUsers() {
   return useApiResource(() => adminService.getUsers(), [])
 }
 
-export function useAdminOffres(params = {}) {
-  return useApiResource(() => adminService.getAdminOffres(params), [JSON.stringify(params)])
+export function useAdminOffres() {
+  return useApiResource(() => adminService.getAdminOffres(), [])
 }

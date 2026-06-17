@@ -10,7 +10,7 @@ export const adminService = {
   deleteUser: (userId) => api.delete(`/admin/utilisateurs/${userId}`),
   
   // Gestion offres admin
-  getAdminOffres: (params = {}) => api.get('/admin/offres', { params }),
+  getAdminOffres: () => api.get('/admin/offres'),
   updateOffreStatus: (offreId, statut) => api.put(`/admin/offres/${offreId}/statut`, { statut }),
   deleteOffre: (offreId) => api.delete(`/admin/offres/${offreId}`),
 }
