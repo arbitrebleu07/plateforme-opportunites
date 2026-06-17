@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/useAuth'
+import { useFormSubmit } from '../hooks/useFormSubmit'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -8,8 +9,6 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 
 export default function Profile() {
   const { user, updateUser } = useAuth()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -33,29 +32,20 @@ export default function Profile() {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  const { loading, error, handleSubmit } = useFormSubmit(async () => {
     setSuccess(false)
     
-    try {
-      const data = new FormData()
-      data.append('name', formData.name)
-      data.append('email', formData.email)
-      if (formData.photo) {
-        data.append('photo', formData.photo)
-      }
-
-      await updateUser(data)
-      setSuccess(true)
-      setTimeout(() => setSuccess(false), 3000)
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la mise à jour du profil')
-    } finally {
-      setLoading(false)
+    const data = new FormData()
+    data.append('name', formData.name)
+    data.append('email', formData.email)
+    if (formData.photo) {
+      data.append('photo', formData.photo)
     }
-  }
+
+    await updateUser(data)
+    setSuccess(true)
+    setTimeout(() => setSuccess(false), 3000)
+  })
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">

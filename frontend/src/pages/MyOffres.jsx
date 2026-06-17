@@ -9,6 +9,8 @@ import { Pagination } from '../components/ui/Pagination'
 import { Select } from '../components/ui/Select'
 import { offresService } from '../services/offresService'
 import { getStatutBadgeVariant } from '../utils/constants'
+import { confirmAndDelete } from '../utils/confirmAction'
+import { formatDate } from '../utils/formatDate'
 
 export default function MyOffres() {
   const [page, setPage] = useState(1)
@@ -32,16 +34,12 @@ export default function MyOffres() {
     setPage(1)
   }
   
-  const handleDeleteOffre = async (offreId) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
-      try {
-        await offresService.delete(offreId)
-        refetch()
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
-      }
-    }
-  }
+  const handleDeleteOffre = (offreId) =>
+    confirmAndDelete(
+      'Êtes-vous sûr de vouloir supprimer cette offre ?',
+      () => offresService.delete(offreId),
+      refetch
+    )
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -97,7 +95,7 @@ export default function MyOffres() {
                 )}
                 {offre.date_limite && (
                   <p className="text-sm text-gray-500 mb-4">
-                    📅 Limite : {new Date(offre.date_limite).toLocaleDateString('fr-FR')}
+                    📅 Limite : {formatDate(offre.date_limite)}
                   </p>
                 )}
                 <div className="flex gap-2 mt-4">

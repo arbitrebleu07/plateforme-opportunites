@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useAdminStats, useAdminUsers, useAdminOffres } from '../hooks/useAdmin'
 import { adminService } from '../services/adminService'
-import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
+import { StatCard } from '../components/ui/StatCard'
 import { LoadingSpinner } from '../components/ui/LoadingSpinner'
 import { ErrorMessage } from '../components/ui/ErrorMessage'
+import { confirmAndDelete } from '../utils/confirmAction'
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('stats')
@@ -23,16 +24,12 @@ export default function AdminDashboard() {
     }
   }
   
-  const handleDeleteUser = async (userId) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ?')) {
-      try {
-        await adminService.deleteUser(userId)
-        refetchUsers()
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
-      }
-    }
-  }
+  const handleDeleteUser = (userId) =>
+    confirmAndDelete(
+      'Êtes-vous sûr de vouloir supprimer cet utilisateur ?',
+      () => adminService.deleteUser(userId),
+      refetchUsers
+    )
   
   const handleUpdateOffreStatus = async (offreId, currentStatus, newStatus) => {
     // Empêcher de réactiver une offre expirée
@@ -49,16 +46,12 @@ export default function AdminDashboard() {
     }
   }
   
-  const handleDeleteOffre = async (offreId) => {
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette offre ?')) {
-      try {
-        await adminService.deleteOffre(offreId)
-        refetchOffres()
-      } catch (error) {
-        console.error('Erreur lors de la suppression:', error)
-      }
-    }
-  }
+  const handleDeleteOffre = (offreId) =>
+    confirmAndDelete(
+      'Êtes-vous sûr de vouloir supprimer cette offre ?',
+      () => adminService.deleteOffre(offreId),
+      refetchOffres
+    )
   
   return (
     <div className="container mx-auto px-4 py-8">
@@ -96,22 +89,10 @@ export default function AdminDashboard() {
             <LoadingSpinner size="lg" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Utilisateurs</h3>
-                <div className="text-3xl font-bold text-blue-600">{stats?.users_count || 0}</div>
-              </Card>
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Offres totales</h3>
-                <div className="text-3xl font-bold text-green-600">{stats?.offres_count || 0}</div>
-              </Card>
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Offres actives</h3>
-                <div className="text-3xl font-bold text-yellow-600">{stats?.active_offres_count || 0}</div>
-              </Card>
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Catégories</h3>
-                <div className="text-3xl font-bold text-purple-600">{stats?.categories_count || 0}</div>
-              </Card>
+              <StatCard label="Utilisateurs" value={stats?.users_count || 0} color="blue" />
+              <StatCard label="Offres totales" value={stats?.offres_count || 0} color="green" />
+              <StatCard label="Offres actives" value={stats?.active_offres_count || 0} color="yellow" />
+              <StatCard label="Catégories" value={stats?.categories_count || 0} color="purple" />
             </div>
           )}
         </div>

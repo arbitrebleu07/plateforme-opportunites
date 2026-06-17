@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -35,12 +34,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Construire l'URL complète de la photo
-        $user->photo = $user->photo ? url(Storage::url($user->photo)) : null;
-
         return response()->json([
             'message' => 'Inscription réussie',
-            'user'    => $user,
+            'user'    => array_merge($user->toArray(), ['photo' => $user->photo_url]),
             'token'   => $token,
         ], 201);
     }
@@ -68,12 +64,9 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        // Construire l'URL complète de la photo
-        $user->photo = $user->photo ? url(Storage::url($user->photo)) : null;
-
         return response()->json([
             'message' => 'Connexion réussie',
-            'user'    => $user,
+            'user'    => array_merge($user->toArray(), ['photo' => $user->photo_url]),
             'token'   => $token,
         ]);
     }
@@ -100,8 +93,8 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = $request->user();
-        // Construire l'URL complète de la photo
-        $user->photo = $user->photo ? url(Storage::url($user->photo)) : null;
-        return response()->json($user);
+        return response()->json(
+            array_merge($user->toArray(), ['photo' => $user->photo_url])
+        );
     }
 }

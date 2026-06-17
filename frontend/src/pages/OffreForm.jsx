@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { offresService } from '../services/offresService'
 import { useCategories } from '../hooks/useCategories'
+import { useFormSubmit } from '../hooks/useFormSubmit'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
@@ -12,8 +13,6 @@ import { ErrorMessage } from '../components/ui/ErrorMessage'
 export default function OffreForm({ isEdit = false, initialData = null }) {
   const navigate = useNavigate()
   const { data: categories } = useCategories()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
   
   const [formData, setFormData] = useState({
     titre: initialData?.titre || '',
@@ -39,30 +38,20 @@ export default function OffreForm({ isEdit = false, initialData = null }) {
     }))
   }
   
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const data = {
-        ...formData,
-        categories: formData.categories // Laravel attendra un array d'IDs
-      }
-      
-      if (isEdit && initialData) {
-        await offresService.update(initialData.id_offre, data)
-      } else {
-        await offresService.create(data)
-      }
-      
-      navigate('/dashboard')
-    } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la sauvegarde')
-    } finally {
-      setLoading(false)
+  const { loading, error, handleSubmit } = useFormSubmit(async () => {
+    const data = {
+      ...formData,
+      categories: formData.categories
     }
-  }
+    
+    if (isEdit && initialData) {
+      await offresService.update(initialData.id_offre, data)
+    } else {
+      await offresService.create(data)
+    }
+    
+    navigate('/dashboard')
+  })
   
   return (
     <div className="container mx-auto px-4 py-8">

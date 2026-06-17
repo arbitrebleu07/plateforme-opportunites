@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -48,10 +49,15 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo ? url(Storage::url($this->photo)) : null;
+    }
+
     public function offres()
-{
-    return $this->belongsToMany(Offre::class, 'publiers', 'id_utilisateur', 'id_offre');
-}
+    {
+        return $this->belongsToMany(Offre::class, 'publiers', 'id_utilisateur', 'id_offre');
+    }
 
 public function notifications()
 {

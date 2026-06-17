@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Offre;
-use App\Models\Notification;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 
 class OffreController extends Controller
@@ -24,15 +24,12 @@ class OffreController extends Controller
         foreach ($expiredOffres as $offre) {
             $offre->update(['statut' => 'expiree']);
 
-            // Créer une notification pour le propriétaire de l'offre
             if ($offre->id_utilisateur) {
-                $notification = Notification::create([
-                    'titre' => 'Offre expirée',
-                    'message' => "Votre offre \"{$offre->titre}\" a expiré.",
-                    'lu' => false,
-                    'date_notification' => now(),
-                ]);
-                $notification->utilisateurs()->attach($offre->id_utilisateur);
+                NotificationService::notifyUser(
+                    $offre->id_utilisateur,
+                    'Offre expirée',
+                    "Votre offre \"{$offre->titre}\" a expiré."
+                );
             }
         }
 
