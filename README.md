@@ -9,6 +9,7 @@ Plateforme d'opportunités (offres d'emploi, stages, bourses/concours, formation
 - **Base de données** : MySQL
 - **Authentification** : Laravel Sanctum
 - **Styling** : Tailwind CSS
+- **Scraper** : Python (Requests, BeautifulSoup, Selenium)
 
 ## Prérequis
 
@@ -17,6 +18,7 @@ Plateforme d'opportunités (offres d'emploi, stages, bourses/concours, formation
 - Node.js 18+
 - MySQL
 - Git
+- Python 3.10+ (pour le scraper)
 
 ## Installation
 
@@ -79,6 +81,41 @@ php artisan serve
 
 Le backend sera accessible sur `http://127.0.0.1:8000` et le frontend sur `http://localhost:5173`.
 
+### 5. Configuration et lancement du scraper
+
+Le scraper Python récupère automatiquement des opportunités depuis plusieurs sources externes (Jooble, Coursera, etc.) et les sauvegarde en JSON.
+
+```bash
+# Aller dans le dossier scraper
+cd scraper
+
+# Installer les dépendances Python
+pip install -r requirements.txt
+
+# Lancer le scraper
+python main.py
+```
+
+> **Note Windows** : si `pip` ou `python` ne fonctionne pas, utilisez le chemin complet de votre installation Python. Par exemple :
+> ```powershell
+> & "C:\Users\<VOTRE_USER>\AppData\Local\Microsoft\WindowsApps\python3.11.exe" -m pip install -r requirements.txt
+> & "C:\Users\<VOTRE_USER>\AppData\Local\Microsoft\WindowsApps\python3.11.exe" main.py
+> ```
+
+**Sources supportées :**
+
+| Source | Type | Méthode |
+|---|---|---|
+| Jooble | Emplois | API REST |
+| Coursera | Formations | API publique |
+| Opportunity Desk | Bourses/Concours | Scraping HTML |
+| Scholarship Positions | Bourses/Concours | Scraping HTML |
+| Emploi.cm | Stages | Scraping HTML |
+
+**Résultats :**
+- Les opportunités récupérées sont sauvegardées dans `scraper/opportunities.json`
+- Si le serveur Laravel tourne (`php artisan serve`), le scraper essaiera aussi d'envoyer les données à l'API
+
 ## Structure du projet
 
 ```
@@ -93,6 +130,12 @@ plateforme-opportunites/
 │   │   ├── services/    # Services API
 │   │   └── context/     # Contexte d'authentification
 │   └── public/          # Assets statiques
+├── scraper/             # Scraper Python (récupération d'opportunités)
+│   ├── main.py          # Point d'entrée du scraper
+│   ├── config.py        # Configuration des sources
+│   ├── base_scraper.py  # Classe de base commune
+│   ├── scrapers/        # Scrapers spécifiques par source
+│   └── requirements.txt # Dépendances Python
 ├── public/              # Point d'entrée Laravel
 ├── routes/              # Routes Laravel
 └── resources/           # Views et assets Laravel
@@ -109,6 +152,7 @@ plateforme-opportunites/
 - **Admin** : Dashboard admin pour gérer utilisateurs et offres
 - **Profil** : Gestion du profil utilisateur (nom, email, photo)
 - **Pagination** : Pagination des offres et des annonces utilisateur
+- **Scraper** : Récupération automatique d'opportunités depuis des sources externes (Jooble, Coursera, etc.)
 
 ## Utilisation
 
