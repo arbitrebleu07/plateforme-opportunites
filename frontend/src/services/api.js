@@ -25,7 +25,10 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Token expiré ou invalide → déconnexion
       localStorage.removeItem('token')
-      window.location.href = '/login'
+      localStorage.removeItem('opportunitech_user')
+      if (!window.location.pathname.startsWith('/connexion')) {
+        window.location.href = '/connexion'
+      }
     }
     return Promise.reject(error)
   }

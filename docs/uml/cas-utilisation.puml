@@ -1,0 +1,47 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor Visiteur
+actor Membre
+actor Administrateur
+
+Membre --|> Visiteur
+Administrateur --|> Membre
+
+rectangle OpportuniTech {
+  usecase "Consulter les opportunités" as UC1
+  usecase "Rechercher et filtrer" as UC2
+  usecase "Voir le détail d'une offre" as UC3
+  usecase "Créer un compte" as UC4
+  usecase "Se connecter" as UC5
+  usecase "Publier une annonce" as UC6
+  usecase "Gérer ses annonces" as UC7
+  usecase "Modifier son profil" as UC8
+  usecase "Consulter les statistiques" as UC9
+  usecase "Lancer une collecte" as UC10
+  usecase "Gérer les offres" as UC11
+  usecase "Gérer les utilisateurs" as UC12
+  usecase "Désactiver les offres expirées" as UC13
+}
+
+Visiteur --> UC1
+Visiteur --> UC2
+Visiteur --> UC3
+Visiteur --> UC4
+Visiteur --> UC5
+
+Membre --> UC6
+Membre --> UC7
+Membre --> UC8
+
+Administrateur --> UC9
+Administrateur --> UC10
+Administrateur --> UC11
+Administrateur --> UC12
+
+UC6 .> UC5 : <<include>>
+UC7 .> UC5 : <<include>>
+UC10 .> UC5 : <<include>>
+UC13 ..> UC11 : actualise
+@enduml

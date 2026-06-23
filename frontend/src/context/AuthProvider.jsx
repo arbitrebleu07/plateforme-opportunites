@@ -1,65 +1,102 @@
-import { useState, useEffect } from 'react'
-import { AuthContext } from './AuthContext'
+import { useEffect, useState } from 'react'
 import api from '../services/api'
+import { AuthContext } from './AuthContext'
+
+const USER_KEY = 'opportunitech_user'
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(USER_KEY)) || null
+    } catch {
+      return null
+    }
+  })
+  const [loading, setLoading] = useState(Boolean(localStorage.getItem('token')))
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      api.get('/me')
-        .then(res => setUser(res.data))
-        .catch(() => localStorage.removeItem('token'))
-        .finally(() => setLoading(false))
-    } else {
-      setTimeout(() => setLoading(false), 0)
-    }
+    if (!localStorage.getItem('token')) return
+
+    api.get('/me')
+      .then(({ data }) => {
+        localStorage.setItem(USER_KEY, JSON.stringify(data))
+        setUser(data)
+      })
+      .catch(() => {
+        localStorage.removeItem('token')
+        localStorage.removeItem(USER_KEY)
+        setUser(null)
+      })
+      .finally(() => setLoading(false))
   }, [])
 
-  const login = async (email, password) => {
-    const res = await api.post('/login', { email, password })
-    localStorage.setItem('token', res.data.token)
-    setUser(res.data.user)
-    return res.data
+  const startSession = ({ user: nextUser, token }) => {
+    localStorage.setItem('token', token)
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+    return nextUser
   }
 
-  const register = async (data) => {
-    const res = await api.post('/register', data)
-    localStorage.setItem('token', res.data.token)
-    setUser(res.data.user)
-    return res.data
+  const login = async (email, password) => {
+    const { data } = await api.post('/login', { email, password })
+    return startSession(data)
+  }
+
+  const register = async ({ name, email, password, confirmation }) => {
+    const { data } = await api.post('/register', {
+      name,
+      email,
+      password,
+      password_confirmation: confirmation,
+    })
+    return startSession(data)
   }
 
   const logout = async () => {
-    await api.post('/logout')
-    localStorage.removeItem('token')
-    setUser(null)
+    try {
+      if (localStorage.getItem('token')) await api.post('/logout')
+    } finally {
+      localStorage.removeItem('token')
+      localStorage.removeItem(USER_KEY)
+      setUser(null)
+    }
   }
 
-  const updateUser = async (formData) => {
-    await api.post('/profile', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    // Re-fetch user data from /me to ensure we have the latest data with correct photo URL
-    const res = await api.get('/me')
-    setUser(res.data)
-    return res.data
+  const updateUser = async (values) => {
+    const payload = values instanceof FormData ? values : {
+      name: values.name,
+      email: values.email,
+    }
+    const { data } = await api.post('/profile', payload)
+    const nextUser = {
+      ...user,
+      ...data.user,
+      localisation: values.localisation ?? user?.localisation,
+    }
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+    return nextUser
   }
 
   const deletePhoto = async () => {
     await api.delete('/profile/photo')
-    // Re-fetch user data from /me
-    const res = await api.get('/me')
-    setUser(res.data)
-    return res.data
+    const nextUser = { ...user, photo: null }
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+    setUser(nextUser)
+    return nextUser
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser, deletePhoto }}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      updateUser,
+      deletePhoto,
+      isAuthenticated: Boolean(user),
+    }}>
       {children}
     </AuthContext.Provider>
   )

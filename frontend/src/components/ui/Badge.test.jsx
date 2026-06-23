@@ -1,6 +1,10 @@
+import React from 'react'
+import '@testing-library/jest-dom'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { Badge } from './Badge'
+
+void React
 
 describe('Badge', () => {
   it('should render with default variant', () => {

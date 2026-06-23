@@ -1,3 +1,7 @@
+import React from 'react'
+
+void React
+
 export function Button({ children, variant = 'primary', size = 'md', className = '', ...props }) {
   const baseClasses = 'font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 shadow-md hover:shadow-lg'
   

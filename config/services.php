@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'scraper' => [
+        'key' => env('SCRAPER_API_KEY'),
+    ],
+
 ];

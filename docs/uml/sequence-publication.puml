@@ -1,0 +1,22 @@
+@startuml
+actor Membre
+participant "Frontend React" as React
+participant "API Laravel" as API
+participant "Sanctum" as Auth
+participant "OffreController" as Controller
+participant "Services de traitement" as Services
+database MySQL
+
+Membre -> React : Remplit et valide le formulaire
+React -> API : POST /api/offres avec token
+API -> Auth : Vérifier le token
+Auth --> API : Utilisateur authentifié
+API -> Controller : store(request)
+Controller -> Services : Nettoyer, catégoriser et calculer le hash
+Services --> Controller : Données normalisées
+Controller -> MySQL : INSERT offre et catégories
+MySQL --> Controller : Offre créée
+Controller --> React : HTTP 201 + offre
+React --> Membre : Toast de succès
+React -> React : Redirection vers /opportunites
+@enduml

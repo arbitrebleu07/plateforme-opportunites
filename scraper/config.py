@@ -3,6 +3,14 @@ Configuration du scraper
 Ce fichier contient toutes les configurations nécessaires pour les scrapers
 """
 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+
+load_dotenv(Path(__file__).resolve().parent.parent / '.env')
+
 # Configuration de la base de données Laravel
 DB_CONFIG = {
     'host': '127.0.0.1',
@@ -14,25 +22,46 @@ DB_CONFIG = {
 
 # Configuration de l'API Laravel
 LARAVEL_API = {
-    'base_url': 'http://127.0.0.1:8000/api',
-    'token': None,  # Sera généré automatiquement ou configuré manuellement
+    'base_url': os.getenv('SCRAPER_API_URL', 'http://127.0.0.1:8000/api'),
+    'key': os.getenv('SCRAPER_API_KEY', ''),
+}
+
+# Configuration HTTP commune. Un timeout de connexion court évite qu'une
+# source indisponible bloque l'exécution de tous les autres scrapers.
+HTTP_CONFIG = {
+    'connect_timeout': 5,
+    'read_timeout': 30,
+    'retry_total': 3,
+    'retry_connect': 2,
+    'backoff_factor': 1,
 }
 
 # Configuration des sources
 SOURCES = {
-    'opportunity_desk': {
-        'name': 'MINESUP - Bourses',
-        'url': 'https://www.minesup.gov.cm/index.php/category/bourses/',
+    'infos_concours_education': {
+        'name': 'Infos Concours Education',
+        'url': 'https://infosconcourseducation.com/',
+        'listing_urls': [
+            'https://infosconcourseducation.com/',
+        ],
         'type': 'bourses/concours',
         'enabled': True,
-        'delay': 2,  # Délai en secondes entre les requêtes
+        'delay': 6,
+        'max_results': 20,
+        'respect_robots_txt': True,
     },
-    'scholarship_positions': {
-        'name': 'Scholarship Positions',
-        'url': 'https://scholarship-positions.com',
+    'kamerpower': {
+        'name': 'Kamerpower',
+        'url': 'https://kamerpower.com/',
+        'listing_urls': [
+            'https://kamerpower.com/upcoming-events/',
+            'https://kamerpower.com/category/scholarships/',
+        ],
         'type': 'bourses/concours',
         'enabled': True,
-        'delay': 2,
+        'delay': 6,
+        'max_results': 20,
+        'respect_robots_txt': True,
     },
     'jooble': {
         'name': 'Jooble',
@@ -64,9 +93,24 @@ SOURCES = {
     'emplois_cm': {
         'name': 'Emploi.cm',
         'url': 'https://www.emploi.cm',
-        'type': 'stage',
-        'enabled': True,  # Activé: Utilise requests (Selenium a des problèmes WinError 193)
-        'delay': 2,
+        'listing_urls': [
+            'https://www.emploi.cm/recherche-jobs-cameroun',
+        ],
+        'enabled': True,
+        'delay': 6,
+        'max_results': 20,
+        'respect_robots_txt': True,
+    },
+    'minajobs': {
+        'name': 'MinaJobs',
+        'url': 'https://www.minajobs.net',
+        'listing_urls': [
+            'https://www.minajobs.net/',
+        ],
+        'enabled': True,
+        'delay': 6,
+        'max_results': 20,
+        'respect_robots_txt': True,
     }
 }
 

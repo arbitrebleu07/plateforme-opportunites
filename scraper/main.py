@@ -7,8 +7,10 @@ import sys
 import os
 import json
 import logging
-from datetime import datetime
+import argparse
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
  
 # Ensure console streams use UTF-8 to avoid UnicodeEncodeError on Windows consoles
 try:
@@ -23,8 +25,18 @@ except Exception:
 # Ajouter le répertoire parent au path pour les imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config import DB_CONFIG, LARAVEL_API, SOURCES, LOG_CONFIG
-from scrapers import OpportunityDeskScraper, ScholarshipPositionsScraper, JoobleScraper, CourseraScraper, EmploisCmScraper
+from config import DB_CONFIG, HTTP_CONFIG, LARAVEL_API, SOURCES, LOG_CONFIG
+from scrapers import (
+    CourseraScraper,
+    EmploisCmScraper,
+    InfosConcoursEducationScraper,
+    JoobleScraper,
+    KamerpowerScraper,
+    MinaJobsScraper,
+)
+from utils.cleaning import clean_opportunity, is_valid_opportunity
+from utils.classifier import classify_opportunity
+from utils.deduplication import OpportunityDeduplicator
 
 class ScraperOrchestrator:
     """
@@ -37,6 +49,7 @@ class ScraperOrchestrator:
         """
         self.config = {
             'LOG_CONFIG': LOG_CONFIG,
+            'HTTP_CONFIG': HTTP_CONFIG,
             'SOURCES': SOURCES,
             'SELENIUM_CONFIG': {
                 'headless': True,
@@ -47,6 +60,28 @@ class ScraperOrchestrator:
         self.logger = self._setup_logger()
         self.scrapers = []
         self.api_token = self._get_api_token()
+        self.http = self._build_http_session()
+        self.request_timeout = (
+            HTTP_CONFIG['connect_timeout'],
+            HTTP_CONFIG['read_timeout'],
+        )
+
+    def _build_http_session(self):
+        retry = Retry(
+            total=HTTP_CONFIG['retry_total'],
+            connect=HTTP_CONFIG['retry_connect'],
+            read=3,
+            status=3,
+            backoff_factor=HTTP_CONFIG['backoff_factor'],
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset(['GET', 'POST']),
+            raise_on_status=False,
+        )
+        session = requests.Session()
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        return session
     
     def _setup_logger(self):
         """
@@ -85,33 +120,37 @@ class ScraperOrchestrator:
         # L'authentification sera gérée via les headers appropriés
         return None
     
-    def initialize_scrapers(self):
+    def initialize_scrapers(self, selected_source='all'):
         """
         Initialise tous les scrapers activés
         """
         self.logger.info("Initialisation des scrapers...")
         
-        if SOURCES['opportunity_desk']['enabled']:
-            self.scrapers.append(OpportunityDeskScraper(self.config))
-            self.logger.info("Scraper Opportunity Desk initialisé")
+        if selected_source in ('all', 'infos_concours_education') and SOURCES['infos_concours_education']['enabled']:
+            self.scrapers.append(InfosConcoursEducationScraper(self.config))
+            self.logger.info("Scraper Infos Concours Education initialisé")
         
-        if SOURCES['scholarship_positions']['enabled']:
-            self.scrapers.append(ScholarshipPositionsScraper(self.config))
-            self.logger.info("Scraper Scholarship Positions initialisé")
+        if selected_source in ('all', 'kamerpower') and SOURCES['kamerpower']['enabled']:
+            self.scrapers.append(KamerpowerScraper(self.config))
+            self.logger.info("Scraper Kamerpower initialisé")
         
-        if SOURCES['jooble']['enabled']:
+        if selected_source in ('all', 'jooble') and SOURCES['jooble']['enabled']:
             self.scrapers.append(JoobleScraper(self.config))
             self.logger.info("Scraper Jooble initialisé")
         
-        if SOURCES['coursera']['enabled']:
+        if selected_source in ('all', 'coursera') and SOURCES['coursera']['enabled']:
             self.scrapers.append(CourseraScraper(self.config))
             self.logger.info("Scraper Coursera initialisé")
         
-        if SOURCES['emplois_cm']['enabled']:
+        if selected_source in ('all', 'emplois_cm') and SOURCES['emplois_cm']['enabled']:
             self.scrapers.append(EmploisCmScraper(self.config))
             self.logger.info("Scraper Emplois.cm initialisé")
+
+        if selected_source in ('all', 'minajobs') and SOURCES['minajobs']['enabled']:
+            self.scrapers.append(MinaJobsScraper(self.config))
+            self.logger.info("Scraper MinaJobs initialisé")
     
-    def run_all_scrapers(self):
+    def run_all_scrapers(self, limit=20):
         """
         Exécute tous les scrapers et collecte les données
         """
@@ -124,22 +163,23 @@ class ScraperOrchestrator:
                 self.logger.info(f"Exécution du scraper: {scraper.__class__.__name__}")
                 
                 # Exécuter le scraper selon son type
-                if isinstance(scraper, OpportunityDeskScraper):
-                    opportunities = scraper.scrape_opportunities(limit=50)
-                elif isinstance(scraper, ScholarshipPositionsScraper):
-                    opportunities = scraper.scrape_scholarships(limit=50)
+                if isinstance(scraper, (InfosConcoursEducationScraper, KamerpowerScraper)):
+                    opportunities = scraper.scrape_opportunities(limit=limit)
                 elif isinstance(scraper, JoobleScraper):
                     # Rechercher plusieurs termes pour plus de variété
                     search_terms = ["developer", "marketing", "design", "data analyst", "manager", "accountant", "engineer", "analyst"]
                     opportunities = []
                     for term in search_terms:
-                        jobs = scraper.scrape_jobs(search_query=term, limit=10)
+                        jobs = scraper.scrape_jobs(search_query=term, limit=min(limit, 10))
                         opportunities.extend(jobs)
+                        if len(opportunities) >= limit:
+                            opportunities = opportunities[:limit]
+                            break
                 elif isinstance(scraper, CourseraScraper):
                     # L'API Coursera retourne les cours par défaut sans recherche
-                    opportunities = scraper.scrape_courses(limit=50)
-                elif isinstance(scraper, EmploisCmScraper):
-                    opportunities = scraper.scrape_jobs(job_type="stage", limit=50)
+                    opportunities = scraper.scrape_courses(limit=limit)
+                elif isinstance(scraper, (EmploisCmScraper, MinaJobsScraper)):
+                    opportunities = scraper.scrape_jobs(limit=limit)
                 else:
                     opportunities = []
                 
@@ -168,20 +208,33 @@ class ScraperOrchestrator:
         Returns:
             Liste des opportunités sans doublons
         """
-        seen_links = set()
+        deduplicator = OpportunityDeduplicator()
         unique_opportunities = []
+        invalid_count = 0
+        duplicate_count = 0
+        category_counts = {}
         
         for opportunity in opportunities:
-            link = opportunity.get('lien') or opportunity.get('url_source', '')
-            if link and link not in seen_links:
-                seen_links.add(link)
-                unique_opportunities.append(opportunity)
-            else:
-                # Si pas de lien ou doublon sur lien, on utilise le titre comme fallback
-                title = opportunity.get('titre', '')
-                if title and title not in seen_links:
-                    seen_links.add(title)
-                    unique_opportunities.append(opportunity)
+            cleaned = clean_opportunity(opportunity)
+
+            if not is_valid_opportunity(cleaned):
+                invalid_count += 1
+                continue
+
+            classified = classify_opportunity(cleaned)
+            category = classified['categorie_principale']
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+            if deduplicator.is_duplicate(classified):
+                duplicate_count += 1
+                continue
+
+            deduplicator.remember(classified)
+            unique_opportunities.append(classified)
+
+        self.logger.info(f"Nettoyage: {invalid_count} opportunites invalides ignorees")
+        self.logger.info(f"Categorisation: {category_counts}")
+        self.logger.info(f"Deduplication locale: {duplicate_count} doublons ignores")
         
         return unique_opportunities
     
@@ -190,27 +243,48 @@ class ScraperOrchestrator:
         Récupère les offres existantes depuis l'API Laravel
         
         Returns:
-            Set des titres d'offres existantes
+            Liste des offres existantes
         """
         try:
             api_url = f"{LARAVEL_API['base_url']}/offres"
-            headers = {
-                'Accept': 'application/json'
-            }
-            
-            response = requests.get(api_url, headers=headers, timeout=30)
-            
-            if response.status_code == 200:
-                offres = response.json()
-                existing_titles = {offre['titre'] for offre in offres}
-                self.logger.info(f"{len(existing_titles)} offres existantes récupérées depuis l'API")
-                return existing_titles
-            else:
-                self.logger.warning(f"Impossible de récupérer les offres existantes: {response.status_code}")
-                return set()
+            headers = {'Accept': 'application/json'}
+            existing_offres = []
+            page = 1
+
+            while True:
+                response = self.http.get(
+                    api_url,
+                    headers=headers,
+                    params={'page': page, 'per_page': 100},
+                    timeout=self.request_timeout
+                )
+
+                if response.status_code != 200:
+                    self.logger.warning(f"Impossible de récupérer les offres existantes: {response.status_code}")
+                    return existing_offres
+
+                payload = response.json()
+                offres = payload.get('data', payload) if isinstance(payload, dict) else payload
+
+                if not isinstance(offres, list):
+                    self.logger.warning("Format inattendu pour la liste des offres existantes")
+                    return existing_offres
+
+                existing_offres.extend(
+                    offre for offre in offres
+                    if isinstance(offre, dict)
+                )
+
+                if not isinstance(payload, dict) or page >= payload.get('last_page', 1):
+                    break
+
+                page += 1
+
+            self.logger.info(f"{len(existing_offres)} offres existantes récupérées depuis l'API")
+            return existing_offres
         except Exception as e:
             self.logger.error(f"Erreur lors de la récupération des offres existantes: {e}")
-            return set()
+            return []
     
     def send_to_laravel(self, opportunities):
         """
@@ -221,19 +295,18 @@ class ScraperOrchestrator:
         """
         self.logger.info("Envoi des opportunités à l'API Laravel")
         
-        # Récupérer les offres existantes pour éviter les doublons
-        existing_titles = self.get_existing_offres()
+        existing_offres = self.get_existing_offres()
+        deduplicator = OpportunityDeduplicator()
+        for existing in existing_offres:
+            deduplicator.add_existing(existing)
         
         api_url = f"{LARAVEL_API['base_url']}/scraper/offres"
         
         headers = {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Scraper-Key': LARAVEL_API['key'],
         }
-        
-        # Si nous avions un token, nous l'ajouterions ici
-        # if self.api_token:
-        #     headers['Authorization'] = f'Bearer {self.api_token}'
         
         success_count = 0
         error_count = 0
@@ -241,8 +314,7 @@ class ScraperOrchestrator:
         
         for opportunity in opportunities:
             try:
-                # Vérifier si l'offre existe déjà
-                if opportunity['titre'] in existing_titles:
+                if deduplicator.is_duplicate(opportunity):
                     self.logger.info(f"Offre déjà existante (skipped): {opportunity['titre'][:50]}...")
                     skipped_count += 1
                     continue
@@ -250,7 +322,6 @@ class ScraperOrchestrator:
                 # Log pour debug
                 self.logger.info(f"Envoi de: {opportunity['titre'][:50]}... | Description: '{opportunity['description'][:50] if opportunity['description'] else 'EMPTY'}'")
                 
-                # Simplifier les données envoyées (exclure categories et source pour l'instant)
                 simplified_data = {
                     'titre': opportunity['titre'],
                     'description': opportunity['description'],
@@ -259,13 +330,24 @@ class ScraperOrchestrator:
                     'localisation': opportunity['localisation'],
                     'date_limite': opportunity['date_limite'],
                     'date_publication': opportunity['date_publication'],
+                    'source': opportunity.get('source'),
                     'url_source': opportunity.get('url_source') or opportunity.get('lien'),
+                    'categories': opportunity.get('categories') or [],
+                    'content_hash': opportunity.get('content_hash'),
+                    'categorie_principale': opportunity.get('categorie_principale'),
+                    'sous_categorie': opportunity.get('sous_categorie'),
                 }
                 
-                response = requests.post(api_url, json=simplified_data, headers=headers, timeout=30)
+                response = self.http.post(
+                    api_url,
+                    json=simplified_data,
+                    headers=headers,
+                    timeout=self.request_timeout,
+                )
                 
                 if response.status_code == 201:
                     success_count += 1
+                    deduplicator.remember(opportunity)
                     try:
                         self.logger.info(f"Opportunité envoyée avec succès: {opportunity['titre']}")
                     except UnicodeEncodeError:
@@ -283,6 +365,11 @@ class ScraperOrchestrator:
                 self.logger.error(f"Erreur lors de l'envoi de {opportunity['titre']}: {e}")
         
         self.logger.info(f"Envoi terminé: {success_count} succès, {skipped_count} ignorés (doublons), {error_count} erreurs")
+        return {
+            'inserted': success_count,
+            'skipped': skipped_count,
+            'errors': error_count,
+        }
     
     def save_to_json(self, opportunities, filename='opportunities.json'):
         """
@@ -299,7 +386,7 @@ class ScraperOrchestrator:
         
         self.logger.info(f"{len(opportunities)} opportunités sauvegardées dans {filename}")
     
-    def run(self):
+    def run(self, selected_source='all', limit=20, save_json=True):
         """
         Exécute le processus complet de scraping
         """
@@ -309,39 +396,78 @@ class ScraperOrchestrator:
         
         try:
             # Initialiser les scrapers
-            self.initialize_scrapers()
+            self.initialize_scrapers(selected_source)
             
             # Exécuter tous les scrapers
-            opportunities = self.run_all_scrapers()
+            opportunities = self.run_all_scrapers(limit)
             
             if not opportunities:
                 self.logger.warning("Aucune opportunité récupérée")
-                return
+                return {
+                    'collected': 0,
+                    'inserted': 0,
+                    'skipped': 0,
+                    'errors': 0,
+                    'message': 'Aucune opportunité récupérée.',
+                }
             
             # Sauvegarder en JSON (pour test)
-            self.save_to_json(opportunities)
+            if save_json:
+                self.save_to_json(opportunities)
             
             # Envoyer à Laravel (optionnel - commenter si l'API n'est pas prête)
-            self.send_to_laravel(opportunities)
+            delivery = self.send_to_laravel(opportunities)
             
             self.logger.info("=" * 50)
             self.logger.info("Processus de scraping terminé avec succès")
             self.logger.info("=" * 50)
+            return {
+                'collected': len(opportunities),
+                **delivery,
+                'message': 'Collecte et import terminés avec succès.',
+            }
             
         except Exception as e:
             self.logger.error(f"Erreur critique lors du processus de scraping: {e}")
             raise
         finally:
-            # Fermer tous les scrapers
             for scraper in self.scrapers:
                 scraper.close()
+            self.http.close()
 
 def main():
     """
     Point d'entrée principal
     """
+    parser = argparse.ArgumentParser(description='Collecte les opportunités configurées.')
+    parser.add_argument('--source', default='all')
+    parser.add_argument('--limit', type=int, default=20)
+    parser.add_argument('--report-file')
+    args = parser.parse_args()
+
     orchestrator = ScraperOrchestrator()
-    orchestrator.run()
+    try:
+        report = orchestrator.run(
+            selected_source=args.source,
+            limit=max(1, min(args.limit, 50)),
+            save_json=not bool(args.report_file),
+        )
+    except Exception as error:
+        report = {
+            'collected': 0,
+            'inserted': 0,
+            'skipped': 0,
+            'errors': 1,
+            'message': str(error),
+        }
+        if args.report_file:
+            with open(args.report_file, 'w', encoding='utf-8') as report_handle:
+                json.dump(report, report_handle, ensure_ascii=False, indent=2)
+        raise
+
+    if args.report_file:
+        with open(args.report_file, 'w', encoding='utf-8') as report_handle:
+            json.dump(report, report_handle, ensure_ascii=False, indent=2)
 
 if __name__ == '__main__':
     main()

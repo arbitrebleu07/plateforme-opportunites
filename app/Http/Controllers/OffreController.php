@@ -2,9 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Offre;
+use App\Models\Categorie;
 use App\Models\Notification;
+use App\Models\Offre;
+use App\Models\Source;
+use App\Services\OpportunityAlertService;
+use App\Services\OpportunityCategorizationService;
+use App\Services\OpportunityDataSanitizationService;
+use App\Services\OpportunityDeduplicationService;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class OffreController extends Controller
 {
@@ -18,8 +26,8 @@ class OffreController extends Controller
     {
         // Mettre à jour automatiquement les offres expirées et créer des notifications
         $expiredOffres = Offre::where('statut', 'active')
-                              ->where('date_limite', '<', now())
-                              ->get();
+            ->where('date_limite', '<', now())
+            ->get();
 
         foreach ($expiredOffres as $offre) {
             $offre->update(['statut' => 'expiree']);
@@ -37,30 +45,49 @@ class OffreController extends Controller
         }
 
         $query = Offre::with(['categories', 'sources'])
-                    ->where('statut', 'active')
-                    ->orderBy('date_publication', 'desc');
-        
+            ->where('statut', 'active')
+            ->where('moderation_status', 'approved')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id_offre');
+
         // Filtrage par recherche
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('titre', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
-        
+
         // Filtrage par type
         if ($request->has('type') && $request->type) {
             $query->where('type', $request->type);
         }
-        
+
         // Filtrage par catégorie
         if ($request->has('category') && $request->category) {
-            $query->whereHas('categories', function($q) use ($request) {
+            $query->whereHas('categories', function ($q) use ($request) {
                 $q->where('categories.id_categorie', $request->category);
             });
         }
-        
+
+        foreach (['niveau_etudes', 'contrat', 'domaine'] as $filter) {
+            if ($request->filled($filter)) {
+                $query->where($filter, $request->string($filter));
+            }
+        }
+
+        if ($request->boolean('teletravail')) {
+            $query->where('teletravail', true);
+        }
+
+        if ($request->filled('remuneration_min')) {
+            $query->where(function ($salaryQuery) use ($request) {
+                $salaryQuery->whereNull('remuneration_max')
+                    ->orWhere('remuneration_max', '>=', $request->integer('remuneration_min'));
+            });
+        }
+
         $offres = $query->paginate($request->per_page ?? 12);
 
         return response()->json($offres);
@@ -74,9 +101,11 @@ class OffreController extends Controller
     */
     public function show($id)
     {
-        $offre = Offre::with(['categories', 'sources'])->find($id);
+        $offre = Offre::with(['categories', 'sources'])
+            ->where('moderation_status', 'approved')
+            ->find($id);
 
-        if (!$offre) {
+        if (! $offre) {
             return response()->json(['message' => 'Offre non trouvée'], 404);
         }
 
@@ -89,59 +118,102 @@ class OffreController extends Controller
     | POST /api/scraper/offres
     |------------------------------------------------------------------
     */
-    public function scraperStore(Request $request)
-    {
-        $request->validate([
-            'titre'       => 'required|string|max:255',
+    public function scraperStore(
+        Request $request,
+        OpportunityCategorizationService $categorization,
+        OpportunityDataSanitizationService $sanitization,
+        OpportunityDeduplicationService $deduplication,
+        OpportunityAlertService $alerts
+    ) {
+        $validated = $request->validate([
+            'titre' => 'required|string|max:255',
             'description' => 'required|string',
-            'type'        => 'required|in:emploi,stage,bourses/concours,formation',
-            'entreprise'  => 'nullable|string',
-            'localisation'=> 'nullable|string',
-            'date_limite' => 'nullable|date',
+            'type' => 'required|in:emploi,stage,bourses/concours,formation',
+            'entreprise' => 'nullable|string',
+            'localisation' => 'nullable|string',
+            'date_limite' => 'nullable|date|after_or_equal:today',
             'date_publication' => 'nullable|date',
-            'source'      => 'nullable|string',
-            'url_source'  => 'nullable|string',
-            'categories'  => 'nullable|array',
+            'source' => 'nullable|string',
+            'url_source' => 'nullable|url|max:2048',
+            'content_hash' => ['nullable', 'string', 'size:64', 'regex:/^[a-f0-9]{64}$/i'],
+            'categories' => 'nullable|array',
             'categories.*' => 'string',
+            'niveau_etudes' => 'nullable|string|max:100',
+            'contrat' => 'nullable|string|max:100',
+            'domaine' => 'nullable|string|max:100',
+            'teletravail' => 'nullable|boolean',
+            'remuneration_min' => 'nullable|integer|min:0',
+            'remuneration_max' => 'nullable|integer|min:0|gte:remuneration_min',
+            'devise' => 'nullable|string|max:10',
+        ], [
+            'date_limite.after_or_equal' => 'La date limite doit être aujourd’hui ou une date future.',
         ]);
 
-        // Vérifier si l'offre existe déjà (basé sur le titre)
-        $existingOffre = Offre::where('titre', $request->titre)->first();
+        $data = $sanitization->sanitize($validated);
+        if (! $sanitization->hasValidContent($data)) {
+            throw ValidationException::withMessages([
+                'titre' => ['Le titre et la description doivent contenir des données exploitables.'],
+            ]);
+        }
+
+        $data['content_hash'] = $data['content_hash'] ?? $deduplication->contentHash($data);
+        $data = array_merge($data, $categorization->categorize($data));
+        $existingOffre = $deduplication->findDuplicate($data);
 
         if ($existingOffre) {
-            // L'offre existe déjà, on la retourne sans la recréer
             return response()->json([
                 'message' => 'Offre déjà existante',
-                'offre' => $existingOffre->load('categories', 'sources')
+                'offre' => $existingOffre->load('categories', 'sources'),
             ], 200);
         }
 
-        // Créer l'offre sans utilisateur (scraper)
         $offre = Offre::create([
-            'titre'            => $request->titre,
-            'description'      => $request->description,
-            'type'             => $request->type,
-            'entreprise'       => $request->entreprise,
-            'localisation'     => $request->localisation,
-            'date_limite'      => $request->date_limite,
-            'date_publication' => $request->date_publication ?? now(),
-            'statut'           => 'active',
-            'id_utilisateur'   => null, // Pas d'utilisateur pour le scraper
+            'titre' => $data['titre'],
+            'description' => $data['description'],
+            'type' => $data['type'],
+            'categorie_principale' => $data['categorie_principale'],
+            'sous_categorie' => $data['sous_categorie'],
+            'entreprise' => $data['entreprise'] ?? null,
+            'localisation' => $data['localisation'] ?? null,
+            'date_limite' => $data['date_limite'] ?? null,
+            'source' => $data['source'] ?? null,
+            'url_source' => $data['url_source'] ?? null,
+            'content_hash' => $data['content_hash'],
+            'date_publication' => $data['date_publication'] ?? now(),
+            'statut' => 'active',
+            'id_utilisateur' => null,
+            'moderation_status' => 'approved',
+            'niveau_etudes' => $validated['niveau_etudes'] ?? null,
+            'contrat' => $validated['contrat'] ?? null,
+            'domaine' => $validated['domaine'] ?? ($data['sous_categorie'] ?? null),
+            'teletravail' => $validated['teletravail'] ?? false,
+            'remuneration_min' => $validated['remuneration_min'] ?? null,
+            'remuneration_max' => $validated['remuneration_max'] ?? null,
+            'devise' => $validated['devise'] ?? 'XAF',
         ]);
 
-        // Attacher les catégories si fournies (par nom, pas par ID)
-        if ($request->has('categories') && is_array($request->categories)) {
-            foreach ($request->categories as $categoryName) {
+        $categorization->applyToOffre($offre);
+
+        foreach ($data['categories'] ?? [] as $categoryName) {
+            if ($categoryName !== '') {
                 $category = Categorie::firstOrCreate(['nom' => $categoryName]);
-                $offre->categories()->attach($category->id_categorie);
+                $offre->categories()->syncWithoutDetaching([$category->id_categorie]);
             }
         }
 
-        // Créer ou lier la source si fournie
-        if ($request->source) {
-            $source = Source::firstOrCreate(['nom' => $request->source]);
-            $offre->sources()->attach($source->id_source);
+        if (! empty($data['source'])) {
+            $source = Source::firstOrCreate(
+                ['nom_site' => $data['source']],
+                [
+                    'url' => ($data['url_source'] ?? null) ?: $data['source'],
+                    'derniere_recuperation' => now(),
+                    'statut' => 'actif',
+                ]
+            );
+            $offre->sources()->syncWithoutDetaching([$source->id_source]);
         }
+
+        $alerts->notifyMatchingUsers($offre);
 
         return response()->json($offre->load('categories', 'sources'), 201);
     }
@@ -152,37 +224,94 @@ class OffreController extends Controller
     | POST /api/offres
     |------------------------------------------------------------------
     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'titre'       => 'required|string|max:255',
+    public function store(
+        Request $request,
+        OpportunityCategorizationService $categorization,
+        OpportunityDataSanitizationService $sanitization,
+        OpportunityDeduplicationService $deduplication,
+        AdminNotificationService $adminNotifications
+    ) {
+        $validated = $request->validate([
+            'titre' => 'required|string|max:255',
             'description' => 'required|string',
-            'type'        => 'required|in:emploi,stage,bourses/concours,formation',
-            'entreprise'  => 'nullable|string',
-            'localisation'=> 'nullable|string',
-            'date_limite' => 'nullable|date',
-            'categories'  => 'nullable|array',
+            'type' => 'required|in:emploi,stage,bourses/concours,formation',
+            'entreprise' => 'nullable|string',
+            'localisation' => 'nullable|string',
+            'date_limite' => 'nullable|date|after_or_equal:today',
+            'url_source' => 'nullable|url|max:2048',
+            'profil_recherche' => 'nullable|string',
+            'missions' => 'nullable|array|max:20',
+            'missions.*' => 'string|max:500',
+            'competences' => 'nullable|array|max:20',
+            'competences.*' => 'string|max:100',
+            'tags' => 'nullable|array|max:20',
+            'tags.*' => 'string|max:100',
+            'categories' => 'nullable|array',
             'categories.*' => 'integer',
+            'niveau_etudes' => 'nullable|string|max:100',
+            'contrat' => 'nullable|string|max:100',
+            'domaine' => 'nullable|string|max:100',
+            'teletravail' => 'nullable|boolean',
+            'remuneration_min' => 'nullable|integer|min:0',
+            'remuneration_max' => 'nullable|integer|min:0|gte:remuneration_min',
+            'devise' => 'nullable|string|max:10',
+        ], [
+            'date_limite.after_or_equal' => 'La date limite doit être aujourd’hui ou une date future.',
         ]);
 
-        $offre = Offre::create([
-            'titre'            => $request->titre,
-            'description'      => $request->description,
-            'type'             => $request->type,
-            'entreprise'       => $request->entreprise,
-            'localisation'     => $request->localisation,
-            'date_limite'      => $request->date_limite,
-            'statut'           => 'active',
-            'date_publication' => now(),
-            'id_utilisateur'   => $request->user()->id,
-        ]);
-
-        // Attacher les catégories si fournies
-        if ($request->has('categories') && is_array($request->categories)) {
-            $offre->categories()->attach($request->categories);
+        $data = $sanitization->sanitize($validated);
+        if (! $sanitization->hasValidContent($data)) {
+            throw ValidationException::withMessages([
+                'titre' => ['Le titre et la description doivent contenir des données exploitables.'],
+            ]);
         }
 
-        return response()->json($offre->load('categories'), 201);
+        $data['content_hash'] = $deduplication->contentHash($data);
+        $data = array_merge($data, $categorization->categorize($data));
+
+        $offre = Offre::create([
+            'titre' => $data['titre'],
+            'description' => $data['description'],
+            'type' => $data['type'],
+            'categorie_principale' => $data['categorie_principale'],
+            'sous_categorie' => $data['sous_categorie'],
+            'entreprise' => $data['entreprise'] ?? null,
+            'localisation' => $data['localisation'] ?? null,
+            'date_limite' => $data['date_limite'] ?? null,
+            'url_source' => $validated['url_source'] ?? null,
+            'source' => 'Publication utilisateur',
+            'profil_recherche' => $validated['profil_recherche'] ?? null,
+            'missions' => array_values(array_filter($validated['missions'] ?? [])),
+            'competences' => array_values(array_filter($validated['competences'] ?? [])),
+            'tags' => array_values(array_filter($validated['tags'] ?? [])),
+            'content_hash' => $data['content_hash'],
+            'statut' => 'active',
+            'moderation_status' => 'pending',
+            'niveau_etudes' => $validated['niveau_etudes'] ?? null,
+            'contrat' => $validated['contrat'] ?? null,
+            'domaine' => $validated['domaine'] ?? ($data['sous_categorie'] ?? null),
+            'teletravail' => $validated['teletravail'] ?? false,
+            'remuneration_min' => $validated['remuneration_min'] ?? null,
+            'remuneration_max' => $validated['remuneration_max'] ?? null,
+            'devise' => $validated['devise'] ?? 'XAF',
+            'date_publication' => null,
+            'id_utilisateur' => $request->user()->id,
+        ]);
+
+        if (! empty($data['categories'])) {
+            $offre->categories()->syncWithoutDetaching($data['categories']);
+        }
+        $categorization->applyToOffre($offre);
+
+        $adminNotifications->send(
+            'Nouvelle annonce à modérer',
+            "{$request->user()->name} a publié l’annonce \"{$offre->titre}\"."
+        );
+
+        return response()->json([
+            ...$offre->load('categories')->toArray(),
+            'message' => 'Annonce envoyée en modération.',
+        ], 201);
     }
 
     /*
@@ -195,7 +324,7 @@ class OffreController extends Controller
     {
         $offre = Offre::find($id);
 
-        if (!$offre) {
+        if (! $offre) {
             return response()->json(['message' => 'Offre non trouvée'], 404);
         }
 
@@ -205,17 +334,49 @@ class OffreController extends Controller
         }
 
         $request->validate([
-            'titre'       => 'nullable|string|max:255',
+            'titre' => 'nullable|string|max:255',
             'description' => 'nullable|string',
-            'type'        => 'nullable|in:emploi,stage,bourses/concours,formation',
-            'entreprise'  => 'nullable|string',
-            'localisation'=> 'nullable|string',
-            'date_limite' => 'nullable|date',
-            'categories'  => 'nullable|array',
+            'type' => 'nullable|in:emploi,stage,bourses/concours,formation',
+            'entreprise' => 'nullable|string',
+            'localisation' => 'nullable|string',
+            'date_limite' => 'nullable|date|after_or_equal:today',
+            'url_source' => 'nullable|url|max:2048',
+            'profil_recherche' => 'nullable|string',
+            'missions' => 'nullable|array|max:20',
+            'missions.*' => 'string|max:500',
+            'competences' => 'nullable|array|max:20',
+            'competences.*' => 'string|max:100',
+            'tags' => 'nullable|array|max:20',
+            'tags.*' => 'string|max:100',
+            'categories' => 'nullable|array',
             'categories.*' => 'integer',
+            'niveau_etudes' => 'nullable|string|max:100',
+            'contrat' => 'nullable|string|max:100',
+            'domaine' => 'nullable|string|max:100',
+            'teletravail' => 'nullable|boolean',
+            'remuneration_min' => 'nullable|integer|min:0',
+            'remuneration_max' => 'nullable|integer|min:0|gte:remuneration_min',
+            'devise' => 'nullable|string|max:10',
+        ], [
+            'date_limite.after_or_equal' => 'La date limite doit être aujourd’hui ou une date future.',
         ]);
 
-        $offre->update($request->only(['titre', 'description', 'type', 'entreprise', 'localisation', 'date_limite']));
+        $offre->update($request->only([
+            'titre', 'description', 'type', 'entreprise', 'localisation',
+            'date_limite', 'url_source', 'profil_recherche', 'missions',
+            'competences', 'tags',
+            'niveau_etudes', 'contrat', 'domaine', 'teletravail',
+            'remuneration_min', 'remuneration_max', 'devise',
+        ]));
+
+        if ($request->user()->role !== 'admin') {
+            $offre->update([
+                'moderation_status' => 'pending',
+                'moderated_by' => null,
+                'moderated_at' => null,
+                'date_publication' => null,
+            ]);
+        }
 
         // Mettre à jour les catégories si fournies
         if ($request->has('categories') && is_array($request->categories)) {
@@ -235,7 +396,7 @@ class OffreController extends Controller
     {
         $offre = Offre::find($id);
 
-        if (!$offre) {
+        if (! $offre) {
             return response()->json(['message' => 'Offre non trouvée'], 404);
         }
 
@@ -285,7 +446,7 @@ class OffreController extends Controller
         return response()->json([
             'message' => 'Nettoyage terminé',
             'duplicates_found' => $duplicates->count(),
-            'deleted_count' => $deletedCount
+            'deleted_count' => $deletedCount,
         ]);
     }
 
@@ -299,19 +460,20 @@ class OffreController extends Controller
     {
         // Mettre à jour automatiquement les offres expirées de l'utilisateur
         Offre::where('id_utilisateur', $request->user()->id)
-              ->where('statut', 'active')
-              ->where('date_limite', '<', now())
-              ->update(['statut' => 'expiree']);
+            ->where('statut', 'active')
+            ->where('date_limite', '<', now())
+            ->update(['statut' => 'expiree']);
 
         $query = Offre::with(['categories', 'sources'])
-                    ->where('id_utilisateur', $request->user()->id)
-                    ->orderBy('date_publication', 'desc');
-        
+            ->where('id_utilisateur', $request->user()->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id_offre');
+
         // Filtrage par statut
         if ($request->has('statut') && $request->statut) {
             $query->where('statut', $request->statut);
         }
-        
+
         $offres = $query->paginate($request->per_page ?? 12);
 
         return response()->json($offres);

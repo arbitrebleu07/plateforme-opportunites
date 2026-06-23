@@ -1,89 +1,76 @@
-import { Routes, Route } from 'react-router-dom'
-import { useParams } from 'react-router-dom'
-
-// Pages
-import Home from './pages/Home'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Offres from './pages/Offres'
-import OffreDetail from './pages/OffreDetail'
-import Dashboard from './pages/Dashboard'
-import AdminDashboard from './pages/AdminDashboard'
-import OffreForm from './pages/OffreForm'
-import MyOffres from './pages/MyOffres'
-import Profile from './pages/Profile'
-
-// Hooks
-import { useOffre } from './hooks/useOffres'
-
-// Components
+import { useState } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import AdminRoute from './components/AdminRoute'
+import { ConfirmModal } from './components/ConfirmModal'
 import Navbar from './components/Navbar'
 import PrivateRoute from './components/PrivateRoute'
-import AdminRoute from './components/AdminRoute'
-import { LoadingSpinner } from './components/ui/LoadingSpinner'
+import { useAuth } from './context/useAuth'
+import AdminDashboard from './pages/AdminDashboard'
+import Alerts from './pages/Alerts'
+import Favorites from './pages/Favorites'
+import Home from './pages/Home'
+import Login from './pages/Login'
+import MyOffres from './pages/MyOffres'
+import Notifications from './pages/Notifications'
+import NotFound from './pages/NotFound'
+import OffreDetail from './pages/OffreDetail'
+import OffreForm from './pages/OffreForm'
+import Offres from './pages/Offres'
+import Profile from './pages/Profile'
+import Register from './pages/Register'
 
-function OffreFormWrapper() {
-  const { id } = useParams()
-  const { data: offre, loading } = useOffre(id)
-  
-  if (loading) return <LoadingSpinner size="lg" />
-  if (!offre) return <div>Offre non trouvée</div>
-  
-  return <OffreForm isEdit={true} initialData={offre} />
-}
+export default function App() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+  const [logoutOpen, setLogoutOpen] = useState(false)
+  const standalone = ['/connexion', '/inscription'].includes(location.pathname) || location.pathname.startsWith('/admin')
 
-function App() {
+  const confirmLogout = async () => {
+    await logout()
+    setLogoutOpen(false)
+    navigate('/connexion')
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="app-shell">
+      <a className="skip-link" href="#main-content">Aller au contenu principal</a>
+      {!standalone && <Navbar onLogout={() => setLogoutOpen(true)} />}
       <Routes>
-        {/* Routes publiques */}
         <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/offres" element={<Offres />} />
-        <Route path="/offres/:id" element={<OffreDetail />} />
+        <Route path="/opportunites" element={<Offres />} />
+        <Route path="/opportunites/:id" element={<OffreDetail />} />
+        <Route path="/connexion" element={<Login />} />
+        <Route path="/inscription" element={<Register />} />
+        <Route path="/publier" element={<PrivateRoute><OffreForm /></PrivateRoute>} />
+        <Route path="/profil" element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/mes-annonces" element={<PrivateRoute><MyOffres /></PrivateRoute>} />
+        <Route path="/favoris" element={<PrivateRoute><Favorites /></PrivateRoute>} />
+        <Route path="/alertes" element={<PrivateRoute><Alerts /></PrivateRoute>} />
+        <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} />
+        <Route path="/admin" element={<AdminRoute><AdminDashboard onLogout={() => setLogoutOpen(true)} /></AdminRoute>} />
 
-        {/* Routes protégées */}
-        <Route path="/dashboard" element={
-          <PrivateRoute>
-            <Dashboard />
-          </PrivateRoute>
-        } />
-        
-        <Route path="/mes-annonces" element={
-          <PrivateRoute>
-            <MyOffres />
-          </PrivateRoute>
-        } />
-        
-        <Route path="/offres/new" element={
-          <PrivateRoute>
-            <OffreForm />
-          </PrivateRoute>
-        } />
-        
-        <Route path="/offres/:id/edit" element={
-          <PrivateRoute>
-            <OffreFormWrapper />
-          </PrivateRoute>
-        } />
-        
-        <Route path="/profile" element={
-          <PrivateRoute>
-            <Profile />
-          </PrivateRoute>
-        } />
-        
-        {/* Route admin */}
-        <Route path="/admin" element={
-          <AdminRoute>
-            <AdminDashboard />
-          </AdminRoute>
-        } />
+        <Route path="/offres" element={<Navigate to="/opportunites" replace />} />
+        <Route path="/offres/:id" element={<LegacyDetailRedirect />} />
+        <Route path="/login" element={<Navigate to="/connexion" replace />} />
+        <Route path="/register" element={<Navigate to="/inscription" replace />} />
+        <Route path="/profile" element={<Navigate to="/profil" replace />} />
+        <Route path="/offres/new" element={<Navigate to="/publier" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/profil" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
+      {!standalone && (
+        <footer className="site-dedication" aria-label="Dédicace">
+          <span>Dédicace</span>
+          <strong>&lt;ZZ family &gt;</strong>
+        </footer>
+      )}
+      <ConfirmModal open={logoutOpen} title="Se déconnecter ?" description="Vous devrez saisir à nouveau vos identifiants pour accéder à votre espace." confirmLabel="Se déconnecter" tone="logout" onCancel={() => setLogoutOpen(false)} onConfirm={confirmLogout} />
     </div>
   )
 }
 
-export default App
+function LegacyDetailRedirect() {
+  const location = useLocation()
+  return <Navigate to={location.pathname.replace('/offres/', '/opportunites/')} replace />
+}

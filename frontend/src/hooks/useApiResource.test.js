@@ -1,4 +1,5 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useApiResource } from './useApiResource'
 
@@ -75,7 +76,9 @@ describe('useApiResource', () => {
     })
     
     mockFetchFn.mockResolvedValue({ data: { count: 2 } })
-    await result.current.refetch()
+    await act(async () => {
+      await result.current.refetch()
+    })
     
     expect(result.current.data).toEqual({ count: 2 })
   })

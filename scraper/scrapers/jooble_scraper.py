@@ -7,8 +7,6 @@ Limite API : 500 requêtes par heure
 """
 
 from base_scraper import BaseScraper
-import requests
-import logging
 from datetime import datetime
 
 class JoobleScraper(BaseScraper):
@@ -51,7 +49,11 @@ class JoobleScraper(BaseScraper):
         
         try:
             # Appel à l'API Jooble
-            response = requests.post(self.api_url, json=payload, timeout=30)
+            response = self.session.post(
+                self.api_url,
+                json=payload,
+                timeout=self.request_timeout,
+            )
             
             if response.status_code != 200:
                 self.logger.error(f"Erreur API Jooble: {response.status_code} - {response.text}")

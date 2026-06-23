@@ -5,10 +5,19 @@ Cette classe fournit les méthodes communes à tous les scrapers
 
 import requests
 from bs4 import BeautifulSoup
+from io import BytesIO
 import time
 import logging
 from datetime import datetime
 import random
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from utils.cleaning import is_pdf_url
+
+try:
+    from pypdf import PdfReader
+except ImportError:
+    PdfReader = None
 
 # Selenium est optionnel - certains scrapers n'en ont pas besoin
 try:
@@ -35,7 +44,13 @@ class BaseScraper:
         Initialise le scraper avec la configuration
         """
         self.config = config
+        http_config = config.get('HTTP_CONFIG', {})
+        self.request_timeout = (
+            http_config.get('connect_timeout', 5),
+            http_config.get('read_timeout', 30),
+        )
         self.session = requests.Session()
+        self._configure_retries()
         self.driver = None
         self.logger = self._setup_logger()
         
@@ -48,16 +63,34 @@ class BaseScraper:
         """
         Configure le logger pour le suivi des opérations
         """
-        logging.basicConfig(
-            level=getattr(logging, self.config['LOG_CONFIG']['level']),
-            format=self.config['LOG_CONFIG']['format'],
-            handlers=[
-                logging.FileHandler(self.config['LOG_CONFIG']['file']),
-                logging.StreamHandler()
-            ]
-        )
+        root_logger = logging.getLogger()
+        if not root_logger.handlers:
+            logging.basicConfig(
+                level=getattr(logging, self.config['LOG_CONFIG']['level']),
+                format=self.config['LOG_CONFIG']['format'],
+                handlers=[
+                    logging.FileHandler(self.config['LOG_CONFIG']['file'], encoding='utf-8'),
+                    logging.StreamHandler()
+                ]
+            )
         return logging.getLogger(self.__class__.__name__)
     
+    def _configure_retries(self):
+        http_config = self.config.get('HTTP_CONFIG', {})
+        retry = Retry(
+            total=http_config.get('retry_total', 3),
+            connect=http_config.get('retry_connect', 2),
+            read=3,
+            status=3,
+            backoff_factor=http_config.get('backoff_factor', 1),
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=frozenset(['GET', 'POST']),
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        self.session.mount('http://', adapter)
+        self.session.mount('https://', adapter)
+
     def get_page(self, url, delay=None):
         """
         Récupère une page avec Requests (pour les pages statiques)
@@ -74,8 +107,16 @@ class BaseScraper:
         
         try:
             self.logger.info(f"Récupération de la page: {url}")
-            response = self.session.get(url, timeout=30)
+            if is_pdf_url(url):
+                self.logger.info(f"URL PDF ignoree pour parsing HTML: {url}")
+                return None
+
+            response = self.session.get(url, timeout=self.request_timeout)
             response.raise_for_status()
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'application/pdf' in content_type:
+                self.logger.info(f"Contenu PDF ignore pour parsing HTML: {url}")
+                return None
             
             # Ajout d'un délai aléatoire pour éviter le rate limiting
             time.sleep(random.uniform(1, 3))
@@ -84,6 +125,27 @@ class BaseScraper:
         except requests.RequestException as e:
             self.logger.error(f"Erreur lors de la récupération de {url}: {e}")
             return None
+
+    def get_pdf_text(self, url):
+        """Télécharge un PDF et retourne son texte sans le transmettre à BeautifulSoup."""
+        if PdfReader is None:
+            self.logger.warning("pypdf n'est pas installé; PDF ignoré: %s", url)
+            return ""
+
+        try:
+            response = self.session.get(
+                url,
+                timeout=(self.request_timeout[0], max(self.request_timeout[1], 45)),
+            )
+            response.raise_for_status()
+            reader = PdfReader(BytesIO(response.content))
+            return self.clean_text(' '.join(
+                page.extract_text() or ''
+                for page in reader.pages
+            ))
+        except Exception as exc:
+            self.logger.error("Erreur d'extraction PDF %s: %s", url, exc)
+            return ""
     
     def get_page_selenium(self, url, delay=None):
         """

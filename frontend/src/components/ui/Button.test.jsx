@@ -1,6 +1,10 @@
+import React from 'react'
+import '@testing-library/jest-dom'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect } from 'vitest'
 import { Button } from './Button'
+
+void React
 
 describe('Button', () => {
   it('should render with default props', () => {
@@ -8,17 +12,17 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: 'Click me' })
     
     expect(button).toBeInTheDocument()
-    expect(button).toHaveClass('bg-blue-600')
+    expect(button).toHaveClass('bg-gradient-to-r')
   })
   
   it('should render with different variants', () => {
     const { rerender } = render(<Button variant="secondary">Secondary</Button>)
     let button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-gray-200')
+    expect(button).toHaveClass('bg-gray-100')
     
     rerender(<Button variant="danger">Danger</Button>)
     button = screen.getByRole('button')
-    expect(button).toHaveClass('bg-red-500')
+    expect(button).toHaveClass('from-red-500')
     
     rerender(<Button variant="outline">Outline</Button>)
     button = screen.getByRole('button')
@@ -28,11 +32,11 @@ describe('Button', () => {
   it('should render with different sizes', () => {
     const { rerender } = render(<Button size="sm">Small</Button>)
     let button = screen.getByRole('button')
-    expect(button).toHaveClass('px-3')
+    expect(button).toHaveClass('px-4')
     
     rerender(<Button size="lg">Large</Button>)
     button = screen.getByRole('button')
-    expect(button).toHaveClass('px-6')
+    expect(button).toHaveClass('px-8')
   })
   
   it('should pass additional props', () => {

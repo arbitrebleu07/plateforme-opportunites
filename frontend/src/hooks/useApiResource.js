@@ -1,55 +1,40 @@
-import { useState, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export function useApiResource(fetchFn, deps = []) {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const fetchFnRef = useRef(fetchFn)
-
-  // Update ref when fetchFn changes
-  fetchFnRef.current = fetchFn
+  const dependencyKey = JSON.stringify(deps)
 
   useEffect(() => {
-    let isMounted = true
+    fetchFnRef.current = fetchFn
+  }, [fetchFn])
 
-    const fetchData = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await fetchFnRef.current()
-        if (isMounted) {
-          setData(response.data)
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err)
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchData()
-
-    return () => {
-      isMounted = false
-    }
-  }, deps)
-
-  const refetch = async () => {
+  const execute = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
       const response = await fetchFnRef.current()
       setData(response.data)
+      return response.data
     } catch (err) {
       setError(err)
+      return null
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  return { data, loading, error, refetch }
+  useEffect(() => {
+    let active = true
+
+    const load = async () => {
+      if (active) await execute()
+    }
+    load()
+    return () => { active = false }
+  }, [dependencyKey, execute])
+
+  return { data, loading, error, refetch: execute }
 }

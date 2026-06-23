@@ -6,8 +6,6 @@ Récupère les formations par spécialité via le paramètre `specialite`
 """
 
 from base_scraper import BaseScraper
-import requests
-import logging
 from datetime import datetime
 import time
 from utils.classifier import classify_offer
@@ -71,7 +69,7 @@ class CourseraScraper(BaseScraper):
 
         all_courses = []
 
-        session = requests.Session()
+        session = self.session
         session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
@@ -105,7 +103,11 @@ class CourseraScraper(BaseScraper):
 
                         url = API_BASE + '/formations'
                         try:
-                            resp = session.get(url, params=params, timeout=20)
+                            resp = session.get(
+                                url,
+                                params=params,
+                                timeout=(self.request_timeout[0], 20),
+                            )
                         except Exception as e:
                             self.logger.warning(f"Échec requête API pour {cat} spec {spec_id} page {page}: {e}")
                             break
@@ -169,4 +171,3 @@ class CourseraScraper(BaseScraper):
 
         self.logger.info(f"Scraping terminé: {len(all_courses)} formations récupérées")
         return all_courses
-

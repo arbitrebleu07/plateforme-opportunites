@@ -13,6 +13,7 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
     /**
      * The attributes that are mass assignable.
      *
@@ -48,13 +49,29 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-    public function offres()
-{
-    return $this->belongsToMany(Offre::class, 'publiers', 'id_utilisateur', 'id_offre');
-}
 
-public function notifications()
-{
-    return $this->belongsToMany(Notification::class, 'recevoirs', 'id_utilisateur', 'id_notification');
-}
+    public function offres()
+    {
+        return $this->belongsToMany(Offre::class, 'publiers', 'id_utilisateur', 'id_offre');
+    }
+
+    public function notifications()
+    {
+        return $this->belongsToMany(Notification::class, 'recevoirs', 'id_utilisateur', 'id_notification');
+    }
+
+    public function favoris()
+    {
+        return $this->belongsToMany(Offre::class, 'favoris', 'user_id', 'offre_id')->withTimestamps();
+    }
+
+    public function alertes()
+    {
+        return $this->hasMany(Alerte::class);
+    }
+
+    public function signalements()
+    {
+        return $this->hasMany(Signalement::class);
+    }
 }

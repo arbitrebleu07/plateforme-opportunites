@@ -15,3 +15,6 @@ webdriver-manager==4.0.0
 
 # Python-dotenv - Pour les variables d'environnement
 python-dotenv==1.0.0
+
+# pypdf - Extraction des documents PDF sans BeautifulSoup
+pypdf==5.7.0

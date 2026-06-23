@@ -1,3 +1,7 @@
+import React from 'react'
+
+void React
+
 export function Badge({ children, variant = 'default', className = '' }) {
   const variants = {
     default: 'bg-gray-100 text-gray-800',

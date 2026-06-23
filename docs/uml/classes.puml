@@ -1,0 +1,82 @@
+@startuml
+hide empty members
+skinparam classAttributeIconSize 0
+
+class User {
+  +id: bigint
+  +name: string
+  +email: string
+  +role: string
+  +date_creation: datetime
+}
+
+class Offre {
+  +id_offre: bigint
+  +titre: string
+  +description: text
+  +type: enum
+  +categorie_principale: string
+  +sous_categorie: string
+  +entreprise: string
+  +localisation: string
+  +date_limite: date
+  +statut: enum
+  +url_source: string
+  +missions: json
+  +competences: json
+  +tags: json
+}
+
+class Categorie {
+  +id_categorie: bigint
+  +nom: string
+  +parent_id: bigint
+}
+
+class Source {
+  +id_source: bigint
+  +nom_site: string
+  +url: string
+  +derniere_recuperation: datetime
+  +statut: enum
+}
+
+class Notification {
+  +id_notification: bigint
+  +titre: string
+  +message: text
+  +lu: boolean
+  +date_notification: datetime
+}
+
+class ScraperRun {
+  +id: bigint
+  +source: string
+  +limit: integer
+  +status: string
+  +collected_count: integer
+  +inserted_count: integer
+  +skipped_count: integer
+  +error_count: integer
+  +started_at: datetime
+  +finished_at: datetime
+}
+
+class OpportunityCategorizationService
+class OpportunityDataSanitizationService
+class OpportunityDeduplicationService
+class ScraperExecutionService
+
+User "1" -- "0..*" Offre : publie
+User "0..*" -- "0..*" Notification : reçoit
+User "1" -- "0..*" ScraperRun : déclenche
+Offre "0..*" -- "0..*" Categorie : classée dans
+Offre "0..*" -- "0..*" Source : provient de
+Categorie "0..1" -- "0..*" Categorie : parent
+
+OpportunityCategorizationService ..> Offre
+OpportunityCategorizationService ..> Categorie
+OpportunityDataSanitizationService ..> Offre
+OpportunityDeduplicationService ..> Offre
+ScraperExecutionService ..> ScraperRun
+@enduml

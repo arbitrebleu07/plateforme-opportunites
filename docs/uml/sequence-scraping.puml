@@ -1,0 +1,35 @@
+@startuml
+actor Administrateur
+participant "Dashboard React" as React
+participant "API Laravel" as API
+participant "AdminMiddleware" as Admin
+participant "ScraperExecutionService" as Service
+participant "Commande Artisan" as Command
+participant "Scraper Python" as Python
+participant "Sources web" as Web
+database MySQL
+
+Administrateur -> React : Choisit une source et une limite
+React -> API : POST /api/admin/scraper/run
+API -> Admin : Vérifier Sanctum et rôle admin
+Admin --> API : Accès autorisé
+API -> MySQL : Créer ScraperRun en cours
+API -> Service : start(run)
+Service -> Command : Démarrer un processus détaché
+API --> React : HTTP 202
+
+Command -> Python : main.py --source --limit
+Python -> Web : Requêtes limitées avec retry
+Web --> Python : Pages et annonces
+Python -> Python : Nettoyage, catégorisation, déduplication
+Python -> API : POST /api/scraper/offres
+API -> MySQL : Insérer les nouvelles offres
+Python --> Command : Rapport JSON
+Command -> MySQL : Terminer ScraperRun
+
+loop Toutes les 4 secondes
+  React -> API : GET /api/admin/stats
+  API -> MySQL : Lire le rapport
+  API --> React : État et compteurs
+end
+@enduml

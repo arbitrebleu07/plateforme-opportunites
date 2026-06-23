@@ -1,0 +1,148 @@
+{
+  "info": {
+    "_postman_id": "5c241914-5b41-4be7-b4d0-opportunitech",
+    "name": "OpportuniTech API",
+    "description": "Collection de validation de l'API REST Laravel OpportuniTech.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000/api" },
+    { "key": "token", "value": "" },
+    { "key": "offre_id", "value": "1" },
+    { "key": "admin_email", "value": "" },
+    { "key": "admin_password", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Authentification",
+      "item": [
+        {
+          "name": "Connexion administrateur",
+          "auth": { "type": "noauth" },
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"{{admin_email}}\",\"password\":\"{{admin_password}}\"}"
+            },
+            "url": "{{base_url}}/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Connexion réussie', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('token', json.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Utilisateur courant",
+          "request": { "method": "GET", "url": "{{base_url}}/me" }
+        },
+        {
+          "name": "Déconnexion",
+          "request": { "method": "POST", "url": "{{base_url}}/logout" }
+        }
+      ]
+    },
+    {
+      "name": "Opportunités publiques",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "Lister les offres",
+          "request": { "method": "GET", "url": "{{base_url}}/offres?per_page=6" }
+        },
+        {
+          "name": "Consulter une offre",
+          "request": { "method": "GET", "url": "{{base_url}}/offres/{{offre_id}}" }
+        },
+        {
+          "name": "Lister les catégories",
+          "request": { "method": "GET", "url": "{{base_url}}/categories" }
+        }
+      ]
+    },
+    {
+      "name": "Espace membre",
+      "item": [
+        {
+          "name": "Publier une offre",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"titre\":\"Stage développeur React\",\"description\":\"Une description détaillée de plus de cent caractères présentant clairement le contexte, les objectifs et les conditions de cette opportunité.\",\"type\":\"stage\",\"entreprise\":\"OpportuniTech\",\"localisation\":\"Douala\",\"date_limite\":null,\"missions\":[\"Développer des interfaces React\"],\"competences\":[\"React\",\"JavaScript\"],\"tags\":[\"Informatique\"]}"
+            },
+            "url": "{{base_url}}/offres"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Offre créée', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('offre_id', pm.response.json().id_offre);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mes offres",
+          "request": { "method": "GET", "url": "{{base_url}}/mes-offres?per_page=20" }
+        },
+        {
+          "name": "Supprimer mon offre",
+          "request": { "method": "DELETE", "url": "{{base_url}}/offres/{{offre_id}}" }
+        }
+      ]
+    },
+    {
+      "name": "Administration",
+      "item": [
+        {
+          "name": "Statistiques réelles",
+          "request": { "method": "GET", "url": "{{base_url}}/admin/stats" }
+        },
+        {
+          "name": "Lancer le scraper",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"source\":\"infos_concours_education\",\"limit\":1}" },
+            "url": "{{base_url}}/admin/scraper/run"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Collecte acceptée', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historique du scraper",
+          "request": { "method": "GET", "url": "{{base_url}}/admin/scraper/runs" }
+        }
+      ]
+    }
+  ]
+}

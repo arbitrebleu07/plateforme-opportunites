@@ -1,13 +1,16 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SourceController;
-use App\Http\Controllers\CategorieController;
-use App\Http\Controllers\OffreController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AlertController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategorieController;
+use App\Http\Controllers\FavoriteController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\OffreController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SourceController;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -37,15 +40,12 @@ Route::get('/offres', [OffreController::class, 'index']);
 // Voir le détail d'une offre
 Route::get('/offres/{id}', [OffreController::class, 'show']);
 
-// Endpoint pour le scraper (création d'offres sans authentification)
-Route::post('/scraper/offres', [OffreController::class, 'scraperStore']);
-
-// Endpoint pour nettoyer les doublons (sans authentification pour faciliter l'utilisation)
-Route::post('/offres/clean-duplicates', [OffreController::class, 'cleanDuplicates']);
+// Endpoint interne utilisé par le collecteur Python.
+Route::post('/scraper/offres', [OffreController::class, 'scraperStore'])
+    ->middleware('scraper.key');
 
 // Lister toutes les catégories
 Route::get('/categories', [CategorieController::class, 'index']);
-
 
 /*
 |--------------------------------------------------------------------------
@@ -65,9 +65,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/offres', [OffreController::class, 'store']);
     Route::put('/offres/{id}', [OffreController::class, 'update']);
     Route::delete('/offres/{id}', [OffreController::class, 'destroy']);
-    
+
     // Offres de l'utilisateur connecté
     Route::get('/mes-offres', [OffreController::class, 'mesOffres']);
+    Route::get('/favoris', [FavoriteController::class, 'index']);
+    Route::post('/favoris/{offre}', [FavoriteController::class, 'store']);
+    Route::delete('/favoris/{offre}', [FavoriteController::class, 'destroy']);
+    Route::post('/offres/{offre}/signaler', [ReportController::class, 'store']);
+    Route::get('/alertes', [AlertController::class, 'index']);
+    Route::post('/alertes', [AlertController::class, 'store']);
+    Route::put('/alertes/{alerte}', [AlertController::class, 'update']);
+    Route::delete('/alertes/{alerte}', [AlertController::class, 'destroy']);
 
     /*
     |------------------------------------------------------------------
@@ -94,7 +102,8 @@ Route::middleware('auth:sanctum')->group(function () {
     |------------------------------------------------------------------
     */
     Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::put('/notifications/{id}/lire', [NotificationController::class, 'marquerLu']);
+    Route::get('/notifications/non-lues/count', [NotificationController::class, 'nombreNonLues']);
+    Route::put('/notifications/{notification}/lire', [NotificationController::class, 'marquerLu']);
 });
 /*
 |--------------------------------------------------------------------------
@@ -112,7 +121,14 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('/admin/offres', [AdminController::class, 'offres']);
     Route::put('/admin/offres/{offre}/statut', [AdminController::class, 'changerStatutOffre']);
     Route::delete('/admin/offres/{offre}', [AdminController::class, 'supprimerOffre']);
+    Route::post('/admin/offres/clean-duplicates', [OffreController::class, 'cleanDuplicates']);
+    Route::get('/admin/moderation', [AdminController::class, 'moderationQueue']);
+    Route::put('/admin/offres/{offre}/moderation', [AdminController::class, 'moderateOffre']);
+    Route::get('/admin/signalements', [AdminController::class, 'signalements']);
+    Route::put('/admin/signalements/{signalement}', [AdminController::class, 'traiterSignalement']);
 
     // Statistiques
     Route::get('/admin/stats', [AdminController::class, 'stats']);
+    Route::post('/admin/scraper/run', [AdminController::class, 'runScraper']);
+    Route::get('/admin/scraper/runs', [AdminController::class, 'scraperRuns']);
 });

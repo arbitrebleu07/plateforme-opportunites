@@ -7,31 +7,37 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    /*
-    |------------------------------------------------------------------
-    | Lister les notifications de l'utilisateur connecté
-    | GET /api/notifications
-    |------------------------------------------------------------------
-    */
-    public function index(Request $request)
+    public function nombreNonLues(Request $request)
     {
-        $notifications = $request->user()
-                                ->notifications()
-                                ->orderBy('date_notification', 'desc')
-                                ->get();
+        $count = $request->user()
+            ->notifications()
+            ->where('notifications.lu', false)
+            ->count();
 
-        return response()->json($notifications);
+        return response()->json(['count' => $count]);
     }
 
-    /*
-    |------------------------------------------------------------------
-    | Marquer une notification comme lue
-    | PUT /api/notifications/{notification}/lire
-    |------------------------------------------------------------------
-    */
-    public function marquerLu(Notification $notification)
+    public function index(Request $request)
     {
+        return response()->json(
+            $request->user()
+                ->notifications()
+                ->orderByDesc('date_notification')
+                ->get()
+        );
+    }
+
+    public function marquerLu(Request $request, Notification $notification)
+    {
+        abort_unless(
+            $request->user()->notifications()
+                ->where('notifications.id_notification', $notification->id_notification)
+                ->exists(),
+            403
+        );
+
         $notification->update(['lu' => true]);
+
         return response()->json(['message' => 'Notification marquée comme lue']);
     }
 }

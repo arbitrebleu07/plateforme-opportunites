@@ -3,16 +3,16 @@ Package scrapers
 Contient tous les scrapers spécifiques pour chaque source
 """
 
-from .opportunity_desk_scraper import OpportunityDeskScraper
-from .scholarship_positions_scraper import ScholarshipPositionsScraper
+from .opportunity_news_scraper import InfosConcoursEducationScraper, KamerpowerScraper
 from .jooble_scraper import JoobleScraper
 from .coursera_scraper import CourseraScraper
-from .emplois_cm_scraper import EmploisCmScraper
+from .cameroon_jobs_scraper import EmploisCmScraper, MinaJobsScraper
 
 __all__ = [
-    'OpportunityDeskScraper',
-    'ScholarshipPositionsScraper',
+    'InfosConcoursEducationScraper',
+    'KamerpowerScraper',
     'JoobleScraper',
     'CourseraScraper',
-    'EmploisCmScraper'
+    'EmploisCmScraper',
+    'MinaJobsScraper',
 ]

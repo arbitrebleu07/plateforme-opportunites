@@ -1,191 +1,95 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useState, useRef, useEffect } from 'react'
+import { Bell, Menu, UserRound, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
+import { notificationsService } from '../services/notificationsService'
+import { BrandLogo } from './BrandLogo'
 
-function Navbar() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const profileMenuRef = useRef(null)
+export default function Navbar({ onLogout }) {
+  const { user } = useAuth()
+  const [open, setOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const close = () => setOpen(false)
 
-  // Add cache busting to photo URL
-  const getPhotoUrl = (photo) => {
-    if (!photo) return null
-    // Temporarily disable cache busting to debug
-    return photo
-  }
+  const loadUnreadCount = useCallback(() => {
+    if (!user) return
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/login')
-  }
+    notificationsService.getUnreadCount()
+      .then(({ data }) => setUnreadCount(Number(data.count) || 0))
+      .catch(() => {})
+  }, [user])
 
-  // Close profile menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
-        setProfileMenuOpen(false)
+    if (!user) {
+      setUnreadCount(0)
+      return undefined
+    }
+
+    const handleNotificationsUpdated = (event) => {
+      if (Number.isInteger(event.detail?.unreadCount)) {
+        setUnreadCount(event.detail.unreadCount)
+      } else {
+        loadUnreadCount()
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') loadUnreadCount()
+    }
+
+    loadUnreadCount()
+    const interval = window.setInterval(refreshWhenVisible, 5000)
+    window.addEventListener('opportunitech:notifications-updated', handleNotificationsUpdated)
+    window.addEventListener('focus', loadUnreadCount)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('opportunitech:notifications-updated', handleNotificationsUpdated)
+      window.removeEventListener('focus', loadUnreadCount)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [user, loadUnreadCount])
 
   return (
-    <nav className="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg px-6 py-4 sticky top-0 z-50">
-      <div className="flex justify-between items-center">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-white hover:text-indigo-200 transition-colors duration-200">
-          OpportuniTech
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-8">
-          <Link to="/offres" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
-            Offres
-          </Link>
-
+    <header className="site-header">
+      <div className="nav-shell">
+        <BrandLogo />
+        <nav id="main-navigation" className={`main-nav ${open ? 'main-nav-open' : ''}`}>
+          <NavLink to="/" onClick={close}>Accueil</NavLink>
+          <NavLink to="/opportunites" onClick={close}>Opportunités</NavLink>
+          <NavLink to="/publier" onClick={close}>Publier</NavLink>
           {user ? (
             <>
-              <Link to="/mes-annonces" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
-                Mes annonces
-              </Link>
-              <Link to="/dashboard" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
-                Dashboard
-              </Link>
-              {user.role === 'admin' && (
-                <Link to="/admin" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium">
-                  Admin
-                </Link>
-              )}
-              
-              {/* Profile Menu */}
-              <div className="relative" ref={profileMenuRef}>
-                <button
-                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                  className="flex items-center gap-2 text-white hover:text-indigo-200 focus:outline-none transition-colors duration-200"
-                >
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-semibold border-2 border-white/30 hover:bg-white/30 transition-all duration-200 overflow-hidden">
-                    {user.photo ? (
-                      <img src={getPhotoUrl(user.photo)} alt="Profile" className="w-full h-full object-cover" />
-                    ) : user.name ? user.name.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-
-                {profileMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 animate-fade-in">
-                    <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-                      <p className="font-semibold text-gray-800">{user.name}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                    </div>
-                    <Link
-                      to="/profile"
-                      className="block px-4 py-3 text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 transition-colors duration-200"
-                      onClick={() => setProfileMenuOpen(false)}
-                    >
-                      Mon profil
-                    </Link>
-                    <button
-                      onClick={() => { handleLogout(); setProfileMenuOpen(false); }}
-                      className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors duration-200"
-                    >
-                      Déconnexion
-                    </button>
-                  </div>
+              <NavLink to="/mes-annonces" onClick={close}>Mes offres</NavLink>
+              <NavLink to="/favoris" onClick={close}>Favoris</NavLink>
+              <NavLink to="/alertes" onClick={close}>Alertes</NavLink>
+              <NavLink to="/notifications" onClick={close} className="notification-nav-link">
+                <Bell size={16} aria-hidden="true" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="notification-count-badge" aria-label={`${unreadCount} notification${unreadCount > 1 ? 's' : ''} non lue${unreadCount > 1 ? 's' : ''}`}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
-              </div>
+              </NavLink>
+              {user.role === 'admin' && <NavLink to="/admin" onClick={close}>Admin</NavLink>}
+              <NavLink to="/profil" onClick={close} className="nav-profile">
+                <UserRound size={16} /> {user.name.split(' ')[0]}
+              </NavLink>
+              <button className="nav-link-button" onClick={() => { close(); onLogout?.() }}>Déconnexion</button>
             </>
           ) : (
-            <>
-              <Link
-                to="/login"
-                className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium"
-              >
-                Connexion
-              </Link>
-              <Link
-                to="/register"
-                className="bg-white text-indigo-600 px-6 py-2 rounded-full hover:bg-indigo-50 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
-              >
-                Inscription
-              </Link>
-            </>
+            <div className="nav-actions">
+              <Link className="button button-mint" to="/connexion" onClick={close}>Connexion</Link>
+              <Link className="button button-primary" to="/inscription" onClick={close}>Créer un compte</Link>
+            </div>
           )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          className="md:hidden text-white"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
+        </nav>
+        <button className="menu-toggle icon-button" onClick={() => setOpen(!open)} aria-label="Menu" aria-expanded={open} aria-controls="main-navigation">
+          {open ? <X /> : <Menu />}
         </button>
       </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden mt-4 pb-4 border-t border-white/20 pt-4 animate-fade-in">
-          <div className="flex flex-col gap-4">
-            <Link to="/offres" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
-              Offres
-            </Link>
-
-            {user ? (
-              <>
-                <Link to="/mes-annonces" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  Mes annonces
-                </Link>
-                <Link to="/dashboard" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  Dashboard
-                </Link>
-                {user.role === 'admin' && (
-                  <Link to="/admin" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
-                    Admin
-                  </Link>
-                )}
-                <Link to="/profile" className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
-                  Mon profil
-                </Link>
-                <button
-                  onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
-                  className="bg-white/20 text-white px-4 py-2 rounded-full hover:bg-white/30 transition-all duration-200 w-full font-medium"
-                >
-                  Déconnexion
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="text-white hover:text-indigo-200 transition-colors duration-200 font-medium"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Connexion
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-white text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-50 transition-all duration-200 text-center font-semibold"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Inscription
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </nav>
+    </header>
   )
 }
-
-export default Navbar

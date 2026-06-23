@@ -19,17 +19,17 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|email|unique:users,email',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
-            'role'     => 'nullable|in:visiteur,membre,admin',
+            'role' => 'prohibited',
         ]);
 
         $user = User::create([
-            'name'          => $request->name,
-            'email'         => $request->email,
-            'password'      => Hash::make($request->password),
-            'role'          => $request->role ?? 'membre',
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'membre',
             'date_creation' => now(),
         ]);
 
@@ -40,8 +40,8 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Inscription réussie',
-            'user'    => $user,
-            'token'   => $token,
+            'user' => $user,
+            'token' => $token,
         ], 201);
     }
 
@@ -54,13 +54,13 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email'    => 'required|email',
+            'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['Les identifiants sont incorrects.'],
             ]);
@@ -73,8 +73,8 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Connexion réussie',
-            'user'    => $user,
-            'token'   => $token,
+            'user' => $user,
+            'token' => $token,
         ]);
     }
 
@@ -102,6 +102,7 @@ class AuthController extends Controller
         $user = $request->user();
         // Construire l'URL complète de la photo
         $user->photo = $user->photo ? url(Storage::url($user->photo)) : null;
+
         return response()->json($user);
     }
 }
